@@ -21,7 +21,7 @@ const LogoLoadingScreen = ({ onComplete }) => {
       }
       // Cleanup animations after completion
       setTimeout(cleanupAnimations, 100);
-    }, 6000);
+    }, 7000);
 
     return () => {
       clearTimeout(timer);
