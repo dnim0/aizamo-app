@@ -21,7 +21,7 @@ const LogoLoadingScreen = ({ onComplete }) => {
       }
       // Cleanup animations after completion
       setTimeout(cleanupAnimations, 100);
-    }, 7000);
+    }, 7500);
 
     return () => {
       clearTimeout(timer);
@@ -30,7 +30,7 @@ const LogoLoadingScreen = ({ onComplete }) => {
   }, [onComplete]);
 
   const createWavePixelFormation = (container) => {
-    const pixelCount = 120; // Reduced from 150 for better performance
+    const pixelCount = 100; // Reduced from 150 for better performance
     const containerRect = container.getBoundingClientRect();
     const centerX = containerRect.width / 2;
     const centerY = containerRect.height / 2;
