@@ -315,6 +315,11 @@ async def get_status_checks():
     return [StatusCheck(**status_check) for status_check in status_checks]
 
 # Include the API router
+@app.middleware("http")
+async def log_requests(request, call_next):
+    logger.info(f"{request.method} {request.url.path}")
+    response = await call_next(request)
+    return response
 app.include_router(api_router)
 
 # CORS middleware (must be before static files)
