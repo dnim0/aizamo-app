@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIzamo - 5 Pixel Formation Transitions</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: linear-gradient(135deg, #ece0d1 0%, #dbc1ac 100%);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(150, 114, 89, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            color: #38220f;
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .header p {
+            color: #634832;
+            font-size: 18px;
+        }
+
+        .transitions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            padding: 25px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .transition-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(150, 114, 89, 0.2);
+            box-shadow: 0 8px 32px rgba(150, 114, 89, 0.15);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            height: 380px;
+        }
+
+        .transition-preview {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            background: linear-gradient(135deg, #ece0d1 0%, #dbc1ac 100%);
+            border-radius: 15px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .transition-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #38220f;
+            margin-bottom: 8px;
+        }
+
+        .transition-desc {
+            font-size: 15px;
+            color: #634832;
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+
+        .tech-features {
+            font-size: 13px;
+            color: #967259;
+            font-style: italic;
+        }
+
+        .play-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #967259;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(150, 114, 89, 0.4);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.1);
+            background: #634832;
+            box-shadow: 0 6px 25px rgba(150, 114, 89, 0.6);
+        }
+
+        /* Logo base styles */
+        .logo {
+            font-size: 48px;
+            font-weight: 700;
+            color: #38220f;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: none;
+        }
+
+        .loading-text {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            color: #634832;
+            opacity: 0;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 20px;
+            right: 20px;
+            height: 3px;
+            background: rgba(150, 114, 89, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #967259, #634832);
+            width: 0%;
+            border-radius: 2px;
+        }
+
+        /* Pixel container */
+        .pixel-container {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .pixel {
+            position: absolute;
+            background: #967259;
+            border-radius: 1px;
+            opacity: 0;
+        }
+
+        /* 1. Random Pixel Convergence */
+        .pixel-1.active .logo {
+            animation: logoReveal 5s ease forwards;
+            animation-delay: 3s;
+        }
+        .pixel-1.active .loading-text {
+            animation: loadingText 5s ease forwards;
+        }
+        .pixel-1.active .progress-fill {
+            animation: progressFill 5s ease forwards;
+        }
+
+        @keyframes logoReveal {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        /* 2. Grid Pixel Assembly */
+        .pixel-2.active .logo {
+            animation: logoReveal 5s ease forwards;
+            animation-delay: 3s;
+        }
+        .pixel-2.active .loading-text {
+            animation: loadingText 5s ease forwards;
+        }
+        .pixel-2.active .progress-fill {
+            animation: progressFill 5s ease forwards;
+        }
+
+        /* 3. Wave Pixel Formation */
+        .pixel-3.active .logo {
+            animation: logoReveal 5s ease forwards;
+            animation-delay: 3s;
+        }
+        .pixel-3.active .loading-text {
+            animation: loadingText 5s ease forwards;
+        }
+        .pixel-3.active .progress-fill {
+            animation: progressFill 5s ease forwards;
+        }
+
+        /* 4. Spiral Pixel Convergence */
+        .pixel-4.active .logo {
+            animation: logoReveal 5s ease forwards;
+            animation-delay: 3s;
+        }
+        .pixel-4.active .loading-text {
+            animation: loadingText 5s ease forwards;
+        }
+        .pixel-4.active .progress-fill {
+            animation: progressFill 5s ease forwards;
+        }
+
+        /* 5. Explosion Inward Formation */
+        .pixel-5.active .logo {
+            animation: logoReveal 5s ease forwards;
+            animation-delay: 3s;
+        }
+        .pixel-5.active .loading-text {
+            animation: loadingText 5s ease forwards;
+        }
+        .pixel-5.active .progress-fill {
+            animation: progressFill 5s ease forwards;
+        }
+
+        /* Common animations */
+        @keyframes loadingText {
+            0% { opacity: 0; }
+            30% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes progressFill {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        /* Controls */
+        .controls {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-top: 1px solid rgba(150, 114, 89, 0.2);
+        }
+
+        .global-btn {
+            background: linear-gradient(135deg, #967259, #634832);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0 10px 10px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(150, 114, 89, 0.3);
+        }
+
+        .global-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(150, 114, 89, 0.5);
+        }
+
+        /* Pixel animation keyframes */
+        .pixel-move-1 { animation: moveToTarget1 3s ease-out forwards; }
+        .pixel-move-2 { animation: moveToTarget2 3s ease-out forwards; }
+        .pixel-move-3 { animation: moveToTarget3 3s ease-out forwards; }
+        .pixel-move-4 { animation: moveToTarget4 3s ease-out forwards; }
+        .pixel-move-5 { animation: moveToTarget5 3s ease-out forwards; }
+
+        @keyframes moveToTarget1 {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes moveToTarget2 {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes moveToTarget3 {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes moveToTarget4 {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes moveToTarget5 {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔲 AIzamo - 5 Pixel Formation Transitions</h1>
+        <p>Watch the logo materialize as individual pixels converge and assemble together!</p>
+    </div>
+
+    <div class="transitions-grid">
+        <!-- Pixel Formation 1: Random Convergence -->
+        <div class="transition-card">
+            <div class="transition-preview pixel-1" onclick="playPixelTransition(1)">
+                <div class="pixel-container" id="pixels-1"></div>
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Pixels Converging...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playPixelTransition(1)">▶</button>
+            </div>
+            <div class="transition-title">1. Random Pixel Convergence</div>
+            <div class="transition-desc">Pixels materialize from random positions across the screen and converge to form the AIzamo logo.</div>
+            <div class="tech-features">Random spawn points • Smooth convergence • Organic formation</div>
+        </div>
+
+        <!-- Pixel Formation 2: Grid Assembly -->
+        <div class="transition-card">
+            <div class="transition-preview pixel-2" onclick="playPixelTransition(2)">
+                <div class="pixel-container" id="pixels-2"></div>
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Grid Assembling...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playPixelTransition(2)">▶</button>
+            </div>
+            <div class="transition-title">2. Grid Pixel Assembly</div>
+            <div class="transition-desc">Pixels emerge from an organized grid pattern and systematically assemble into the logo.</div>
+            <div class="tech-features">Grid formation • Sequential assembly • Structured approach</div>
+        </div>
+
+        <!-- Pixel Formation 3: Wave Formation -->
+        <div class="transition-card">
+            <div class="transition-preview pixel-3" onclick="playPixelTransition(3)">
+                <div class="pixel-container" id="pixels-3"></div>
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Pixels Flowing...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playPixelTransition(3)">▶</button>
+            </div>
+            <div class="transition-title">3. Wave Pixel Formation</div>
+            <div class="transition-desc">Pixels flow in from the edges like waves, building the logo from left to right in flowing motion.</div>
+            <div class="tech-features">Wave motion • Edge-to-center flow • Fluid dynamics</div>
+        </div>
+
+        <!-- Pixel Formation 4: Spiral Convergence -->
+        <div class="transition-card">
+            <div class="transition-preview pixel-4" onclick="playPixelTransition(4)">
+                <div class="pixel-container" id="pixels-4"></div>
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Spiraling Inward...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playPixelTransition(4)">▶</button>
+            </div>
+            <div class="transition-title">4. Spiral Pixel Convergence</div>
+            <div class="transition-desc">Pixels spiral inward from the edges, creating a hypnotic vortex that forms the logo.</div>
+            <div class="tech-features">Spiral mathematics • Vortex effect • Hypnotic convergence</div>
+        </div>
+
+        <!-- Pixel Formation 5: Explosion Inward -->
+        <div class="transition-card">
+            <div class="transition-preview pixel-5" onclick="playPixelTransition(5)">
+                <div class="pixel-container" id="pixels-5"></div>
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Explosion Assembling...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playPixelTransition(5)">▶</button>
+            </div>
+            <div class="transition-title">5. Explosion Inward Formation</div>
+            <div class="transition-desc">Pixels explode outward first, then reverse and converge inward to assemble the logo.</div>
+            <div class="tech-features">Reverse explosion • Dynamic reversal • Energy convergence</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="global-btn" onclick="playAllPixelTransitions()">🎬 Play All Pixel Effects</button>
+        <button class="global-btn" onclick="resetAllPixelTransitions()">🔄 Reset All</button>
+        <button class="global-btn" onclick="randomPixelTransition()">🎲 Random Pixel Effect</button>
+    </div>
+
+    <script>
+        let activeTransitions = [];
+
+        // Logo letter positions for pixel targeting (approximate)
+        const logoLetterPositions = [
+            // A
+            {x: 40, y: 50, width: 12, height: 20},
+            // I
+            {x: 55, y: 50, width: 8, height: 20},
+            // z  
+            {x: 67, y: 50, width: 12, height: 20},
+            // a
+            {x: 82, y: 50, width: 12, height: 20},
+            // m
+            {x: 97, y: 50, width: 15, height: 20},
+            // o
+            {x: 115, y: 50, width: 12, height: 20}
+        ];
+
+        function createPixelsForTransition(transitionNum, container) {
+            const pixelCount = 150; // Number of pixels
+            const containerRect = container.getBoundingClientRect();
+            const centerX = containerRect.width / 2;
+            const centerY = containerRect.height / 2;
+
+            // Clear existing pixels
+            container.innerHTML = '';
+
+            for (let i = 0; i < pixelCount; i++) {
+                const pixel = document.createElement('div');
+                pixel.className = 'pixel';
+                
+                // Different starting positions based on transition type
+                let startX, startY, targetX, targetY;
+                
+                switch(transitionNum) {
+                    case 1: // Random Convergence
+                        startX = Math.random() * containerRect.width;
+                        startY = Math.random() * containerRect.height;
+                        break;
+                    case 2: // Grid Assembly
+                        const gridSize = Math.ceil(Math.sqrt(pixelCount));
+                        const gridX = i % gridSize;
+                        const gridY = Math.floor(i / gridSize);
+                        startX = (gridX / gridSize) * containerRect.width;
+                        startY = (gridY / gridSize) * containerRect.height;
+                        break;
+                    case 3: // Wave Formation
+                        const wavePhase = (i / pixelCount) * Math.PI * 4;
+                        startX = 0;
+                        startY = centerY + Math.sin(wavePhase) * 50;
+                        break;
+                    case 4: // Spiral Convergence
+                        const spiralAngle = (i / pixelCount) * Math.PI * 8;
+                        const spiralRadius = 100;
+                        startX = centerX + Math.cos(spiralAngle) * spiralRadius;
+                        startY = centerY + Math.sin(spiralAngle) * spiralRadius;
+                        break;
+                    case 5: // Explosion Inward
+                        const explosionAngle = (i / pixelCount) * Math.PI * 2;
+                        const explosionRadius = 150;
+                        startX = centerX + Math.cos(explosionAngle) * explosionRadius;
+                        startY = centerY + Math.sin(explosionAngle) * explosionRadius;
+                        break;
+                }
+
+                // Target positions (logo formation)
+                const letterIndex = i % logoLetterPositions.length;
+                const letterPos = logoLetterPositions[letterIndex];
+                const offsetX = (Math.random() - 0.5) * letterPos.width;
+                const offsetY = (Math.random() - 0.5) * letterPos.height;
+                
+                targetX = (letterPos.x / 100) * containerRect.width + offsetX;
+                targetY = (letterPos.y / 100) * containerRect.height + offsetY;
+
+                // Set initial position
+                pixel.style.left = startX + 'px';
+                pixel.style.top = startY + 'px';
+                pixel.style.width = (Math.random() * 3 + 2) + 'px';
+                pixel.style.height = pixel.style.width;
+
+                // Create custom animation
+                const animationName = `movePixel-${transitionNum}-${i}`;
+                createCustomAnimation(animationName, startX, startY, targetX, targetY);
+                
+                // Apply animation with delay
+                pixel.style.animation = `${animationName} 3s ease-out forwards`;
+                pixel.style.animationDelay = (i * 20) + 'ms';
+                pixel.style.opacity = '1';
+
+                container.appendChild(pixel);
+            }
+        }
+
+        function createCustomAnimation(name, startX, startY, targetX, targetY) {
+            // Check if animation already exists
+            const existingStyle = document.getElementById('dynamic-animations');
+            if (!existingStyle) {
+                const styleSheet = document.createElement('style');
+                styleSheet.id = 'dynamic-animations';
+                document.head.appendChild(styleSheet);
+            }
+
+            const styleSheet = document.getElementById('dynamic-animations');
+            const keyframes = `
+                @keyframes ${name} {
+                    0% {
+                        left: ${startX}px;
+                        top: ${startY}px;
+                        opacity: 1;
+                    }
+                    80% {
+                        left: ${targetX}px;
+                        top: ${targetY}px;
+                        opacity: 1;
+                    }
+                    100% {
+                        left: ${targetX}px;
+                        top: ${targetY}px;
+                        opacity: 0;
+                    }
+                }
+            `;
+            
+            styleSheet.sheet.insertRule(keyframes, styleSheet.sheet.cssRules.length);
+        }
+
+        function playPixelTransition(num) {
+            resetPixelTransition(num);
+            
+            setTimeout(() => {
+                const element = document.querySelector(`.pixel-${num}`);
+                const container = document.getElementById(`pixels-${num}`);
+                
+                // Create pixels
+                createPixelsForTransition(num, container);
+                
+                // Start animation
+                element.classList.add('active');
+                activeTransitions.push(num);
+                
+                // Reset after animation completes
+                setTimeout(() => {
+                    resetPixelTransition(num);
+                }, 5500);
+            }, 100);
+        }
+
+        function resetPixelTransition(num) {
+            const element = document.querySelector(`.pixel-${num}`);
+            const container = document.getElementById(`pixels-${num}`);
+            
+            element.classList.remove('active');
+            if (container) {
+                container.innerHTML = '';
+            }
+            activeTransitions = activeTransitions.filter(t => t !== num);
+        }
+
+        function resetAllPixelTransitions() {
+            for (let i = 1; i <= 5; i++) {
+                resetPixelTransition(i);
+            }
+        }
+
+        function playAllPixelTransitions() {
+            resetAllPixelTransitions();
+            
+            for (let i = 1; i <= 5; i++) {
+                setTimeout(() => {
+                    playPixelTransition(i);
+                }, i * 1200);
+            }
+        }
+
+        function randomPixelTransition() {
+            const randomNum = Math.floor(Math.random() * 5) + 1;
+            playPixelTransition(randomNum);
+        }
+
+        // Auto-demo 
+        let demoIndex = 1;
+        function runPixelDemo() {
+            playPixelTransition(demoIndex);
+            demoIndex = demoIndex >= 5 ? 1 : demoIndex + 1;
+        }
+
+        // Start demo after page load
+        setTimeout(() => {
+            setInterval(runPixelDemo, 6000);
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIzamo Logo Concepts</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #ece0d1 0%, #dbc1ac 100%);
+            font-family: 'IBM Plex Sans', sans-serif;
+        }
+        .logo-showcase {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .logo-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            border: 1px solid rgba(150, 114, 89, 0.2);
+            box-shadow: 0 8px 32px rgba(150, 114, 89, 0.15);
+            transition: transform 0.3s ease;
+        }
+        .logo-card:hover {
+            transform: translateY(-5px);
+        }
+        .logo-preview {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .logo-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #38220f;
+            margin-bottom: 10px;
+        }
+        .logo-description {
+            font-size: 14px;
+            color: #634832;
+            line-height: 1.5;
+        }
+        
+        /* Logo Styles */
+        .logo-1 {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #967259 0%, #634832 50%, #38220f 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+        }
+        .logo-1::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #967259, transparent);
+            border-radius: 2px;
+        }
+        
+        .logo-2 {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-2-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #967259 0%, #634832 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .logo-2-icon::before {
+            content: 'AZ';
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .logo-2-icon::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255,255,255,0.2), transparent);
+        }
+        .logo-2-text {
+            font-size: 36px;
+            font-weight: 600;
+            color: #38220f;
+        }
+        
+        .logo-3 {
+            position: relative;
+        }
+        .logo-3-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: conic-gradient(from 45deg, #967259, #634832, #38220f, #967259);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            position: relative;
+            animation: rotate 4s linear infinite;
+        }
+        .logo-3-circle::before {
+            content: 'AI';
+            position: absolute;
+            color: white;
+            font-weight: 700;
+            font-size: 24px;
+        }
+        .logo-3-text {
+            font-size: 28px;
+            font-weight: 600;
+            color: #38220f;
+        }
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .logo-4 {
+            font-size: 40px;
+            font-weight: 600;
+            color: #38220f;
+            position: relative;
+            display: inline-block;
+        }
+        .logo-4::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -20px;
+            right: -20px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #967259, transparent);
+            z-index: -1;
+        }
+        .circuit-dots {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .circuit-dot {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #967259;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .circuit-dot:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+        .circuit-dot:nth-child(2) { top: 70%; left: 25%; animation-delay: 0.5s; }
+        .circuit-dot:nth-child(3) { top: 40%; right: 15%; animation-delay: 1s; }
+        .circuit-dot:nth-child(4) { bottom: 25%; right: 30%; animation-delay: 1.5s; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.5); }
+        }
+        
+        .logo-5 {
+            position: relative;
+            display: inline-block;
+        }
+        .logo-5-bg {
+            position: absolute;
+            inset: -10px;
+            background: linear-gradient(45deg, rgba(150, 114, 89, 0.1), rgba(99, 72, 50, 0.1));
+            border-radius: 15px;
+            z-index: -1;
+        }
+        .logo-5-text {
+            font-size: 42px;
+            font-weight: 700;
+            color: #38220f;
+            text-shadow: 0 2px 4px rgba(150, 114, 89, 0.3);
+        }
+        .logo-5-accent {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            background: #967259;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(150, 114, 89, 0.5);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #38220f;
+            margin-bottom: 40px;
+            font-size: 36px;
+        }
+    </style>
+</head>
+<body>
+    <h1>AIzamo Logo Concepts - High-Tech & Modern</h1>
+    
+    <div class="logo-showcase">
+        <div class="logo-card">
+            <div class="logo-preview">
+                <div class="logo-1">AIzamo</div>
+            </div>
+            <div class="logo-title">Concept 1: Gradient Typography</div>
+            <div class="logo-description">Clean gradient text with subtle underline accent. Perfect for center-to-nav animation with beautiful color transitions.</div>
+        </div>
+
+        <div class="logo-card">
+            <div class="logo-preview">
+                <div class="logo-2">
+                    <div class="logo-2-icon"></div>
+                    <div class="logo-2-text">AIzamo</div>
+                </div>
+            </div>
+            <div class="logo-title">Concept 2: Icon + Typography</div>
+            <div class="logo-description">Modern gradient icon badge with "AZ" monogram paired with clean typography. Great for brand recognition.</div>
+        </div>
+
+        <div class="logo-card">
+            <div class="logo-preview">
+                <div class="logo-3">
+                    <div class="logo-3-circle"></div>
+                    <div class="logo-3-text">AIzamo</div>
+                </div>
+            </div>
+            <div class="logo-title">Concept 3: Animated Tech Circle</div>
+            <div class="logo-description">Rotating gradient circle with "AI" monogram. Creates dynamic movement perfect for loading animations.</div>
+        </div>
+
+        <div class="logo-card">
+            <div class="logo-preview">
+                <div class="logo-4">
+                    AIzamo
+                    <div class="circuit-dots">
+                        <div class="circuit-dot"></div>
+                        <div class="circuit-dot"></div>
+                        <div class="circuit-dot"></div>
+                        <div class="circuit-dot"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="logo-title">Concept 4: Circuit Integration</div>
+            <div class="logo-description">Clean typography with subtle pulsing circuit dots. Maintains tech feel while being minimal and modern.</div>
+        </div>
+
+        <div class="logo-card">
+            <div class="logo-preview">
+                <div class="logo-5">
+                    <div class="logo-5-bg"></div>
+                    <div class="logo-5-text">AIzamo</div>
+                    <div class="logo-5-accent"></div>
+                </div>
+            </div>
+            <div class="logo-title">Concept 5: Premium Badge</div>
+            <div class="logo-description">Sophisticated design with glass background and glowing accent dot. Perfect for premium AI agency branding.</div>
+        </div>
+    </div>
+</body>
+</html>
