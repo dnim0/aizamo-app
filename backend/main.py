@@ -228,11 +228,6 @@ async def process_contact_integrations(contact_data: dict):
         logger.error(f"Unexpected error in GoHighLevel integration: {str(e)}")
         return {"ghl_error": "Integration failed"}
 
-# API Routes
-@api_router.get("/")
-async def root():
-    return {"message": "AIzamo API is running", "version": "1.0.0"}
-
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint for monitoring"""
