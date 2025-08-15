@@ -1,34 +1,41 @@
-# backend/main.py
-from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Request
+# backend/main.py — Gmail SMTP + GoHighLevel (Mongo-free)
+from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+
 import os
 import logging
-from pydantic import BaseModel, Field, EmailStr, validator
-from typing import List, Optional
 import uuid
 from datetime import datetime, timedelta
+from typing import List, Optional
+
+from pydantic import BaseModel, Field, EmailStr, validator
+
 import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import jinja2
+import httpx
 
-# Load environment variables
+
+# ── Env
 load_dotenv()
 
-# Create the main app
+# ── App
 app = FastAPI(
     title="AIzamo Website API",
     description="Full-stack website for AIzamo AI (Mongo-free)",
-    version="1.0.0"
+    version="1.0.0",
 )
-
-# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-# Email configuration
+# ── Logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
+
+# ── Email (Gmail SMTP)
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
@@ -36,38 +43,32 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "hello@aizamo.com")
 TO_EMAIL = os.getenv("TO_EMAIL", "hello@aizamo.com")
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# Optional GoHighLevel stubs (safe no-ops if unset)
+# ── GoHighLevel (LeadConnector API)
 GHL_API_KEY = os.getenv("GHL_API_KEY", "")
 GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID", "")
+GHL_BASE_URL = "https://services.leadconnectorhq.com"
 
-class GoHighLevelError(Exception):
-    pass
 
-async def create_ghl_contact(contact_data: dict):
-    if not (GHL_API_KEY and GHL_LOCATION_ID):
-        return None
-    return None
+def _ghl_headers() -> dict:
+    """Headers required by GHL LeadConnector API."""
+    return {
+        "Authorization": f"Bearer {GHL_API_KEY}",
+        "Version": "2021-07-28",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
 
-async def create_ghl_task(contact_id: str, task_data: dict):
-    if not (GHL_API_KEY and GHL_LOCATION_ID):
-        return None
-    return None
 
-# Models
+# ── Models
 class StatusCheck(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_name: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
+
 class StatusCheckCreate(BaseModel):
     client_name: str
+
 
 class ContactFormSubmission(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -80,14 +81,16 @@ class ContactFormSubmission(BaseModel):
     message: str = Field(..., min_length=10, max_length=2000)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     status: str = Field(default="new")
-    
-    @validator('phone', pre=True)
+
+    @validator("phone", pre=True)
     def validate_phone(cls, v):
+        # Why: avoid junk submissions; accept empty, basic length check otherwise
         if v and v.strip():
-            phone_clean = ''.join(filter(str.isdigit, v))
-            if len(phone_clean) < 7:
-                raise ValueError('Phone number is too short')
+            digits = "".join(filter(str.isdigit, v))
+            if len(digits) < 7:
+                raise ValueError("Phone number is too short")
         return v
+
 
 class ContactFormCreate(BaseModel):
     firstName: str = Field(..., min_length=1, max_length=100)
@@ -98,17 +101,20 @@ class ContactFormCreate(BaseModel):
     service: str = Field(..., min_length=1)
     message: str = Field(..., min_length=10, max_length=2000)
 
+
 class ContactFormResponse(BaseModel):
     success: bool
     message: str
     contact_id: Optional[str] = None
 
-# Email template
-def get_contact_email_template():
+
+# ── Email (HTML template + sender)
+
+def _contact_email_template() -> str:
     return """
     <!DOCTYPE html>
     <html>
-    <body>
+      <body>
         <h2>New Contact Form Submission</h2>
         <p><b>Name:</b> {{ firstName }} {{ lastName }}</p>
         <p><b>Email:</b> {{ email }}</p>
@@ -117,69 +123,159 @@ def get_contact_email_template():
         <p><b>Service:</b> {{ service }}</p>
         <p><b>Message:</b><br>{{ message }}</p>
         <p>Submitted: {{ timestamp.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>
-    </body>
+      </body>
     </html>
     """
 
-async def send_email_notification(contact_data: dict):
-    if not SMTP_USERNAME or not SMTP_PASSWORD:
+
+async def send_email_notification(contact_data: dict) -> bool:
+    """Send email via Gmail SMTP; Reply-To set to submitter so replies go to them."""
+    if not (SMTP_USERNAME and SMTP_PASSWORD):
         logger.warning("Email credentials not configured, skipping email notification")
         return False
     try:
-        html_content = jinja2.Template(get_contact_email_template()).render(**contact_data)
+        html_content = jinja2.Template(_contact_email_template()).render(**contact_data)
         message = MIMEMultipart("alternative")
-        message["Subject"] = f"New Contact Form Submission from {contact_data['firstName']} {contact_data['lastName']}"
+        message["Subject"] = (
+            f"New Contact Form Submission from {contact_data['firstName']} {contact_data['lastName']}"
+        )
         message["From"] = FROM_EMAIL
         message["To"] = TO_EMAIL
+        message["Reply-To"] = contact_data.get("email", FROM_EMAIL)
         message.attach(MIMEText(html_content, "html"))
         async with aiosmtplib.SMTP(hostname=SMTP_SERVER, port=SMTP_PORT) as smtp:
             await smtp.connect()
             await smtp.starttls()
             await smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
             await smtp.send_message(message)
-        logger.info(f"Email notification sent for contact submission: {contact_data['email']}")
+        logger.info("Email notification sent")
         return True
     except Exception as e:
-        logger.error(f"Failed to send email notification: {str(e)}")
+        logger.error(f"Failed to send email notification: {e}")
         return False
 
-# Endpoints
+
+# ── GoHighLevel integration
+async def create_ghl_contact(contact: dict) -> Optional[dict]:
+    """Create a contact in GoHighLevel; returns response JSON or None."""
+    if not (GHL_API_KEY and GHL_LOCATION_ID):
+        logger.info("GHL not configured; skipping contact creation")
+        return None
+
+    payload = {
+        "locationId": GHL_LOCATION_ID,
+        "firstName": contact.get("firstName"),
+        "lastName": contact.get("lastName"),
+        "email": contact.get("email"),
+        "phone": contact.get("phone") or None,
+        "companyName": contact.get("company") or None,
+        "source": "Website",
+        "tags": ["Website Contact"],
+    }
+    payload = {k: v for k, v in payload.items() if v is not None}
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.post(f"{GHL_BASE_URL}/contacts/", headers=_ghl_headers(), json=payload)
+        if r.status_code in (200, 201):
+            data = r.json()
+            logger.info("GHL contact created")
+            return data
+        logger.error(f"GHL contact create failed [{r.status_code}]: {r.text}")
+        return None
+    except Exception as e:
+        logger.error(f"GHL contact error: {e}")
+        return None
+
+
+async def create_ghl_task(contact_id: str, title: str, description: str = "", due_days: int = 3) -> Optional[dict]:
+    """Create a follow-up task for a GHL contact; returns response JSON or None."""
+    if not (GHL_API_KEY and contact_id):
+        return None
+
+    due_date = (datetime.utcnow().date() + timedelta(days=due_days)).isoformat()
+    payload = {
+        "title": title,
+        "description": description,
+        "dueDate": due_date,
+        "completed": False,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.post(
+                f"{GHL_BASE_URL}/contacts/{contact_id}/tasks",
+                headers=_ghl_headers(),
+                json=payload,
+            )
+        if r.status_code in (200, 201):
+            logger.info("GHL task created")
+            return r.json()
+        logger.error(f"GHL task create failed [{r.status_code}]: {r.text}")
+        return None
+    except Exception as e:
+        logger.error(f"GHL task error: {e}")
+        return None
+
+
+# ── Routes
 @api_router.get("/health")
 async def health_check():
-    return {
-        "status": "healthy",
-        "database": "not-used",
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    return {"status": "healthy", "database": "not-used", "timestamp": datetime.utcnow().isoformat()}
+
 
 @api_router.post("/contact", response_model=ContactFormResponse)
 async def submit_contact_form(contact_data: ContactFormCreate, background_tasks: BackgroundTasks):
     contact_submission = ContactFormSubmission(**contact_data.dict())
-    background_tasks.add_task(create_ghl_contact, contact_submission.dict())
+
+    # Create GHL contact first to capture its id
+    ghl_contact_id: Optional[str] = None
+    ghl_res = await create_ghl_contact(contact_submission.dict())
+    if isinstance(ghl_res, dict):
+        ghl_contact_id = (
+            (ghl_res.get("contact") or {}).get("id")
+            or ghl_res.get("id")
+        )
+
+    # Queue GHL follow-up task and email send
+    if ghl_contact_id:
+        background_tasks.add_task(
+            create_ghl_task,
+            ghl_contact_id,
+            title=f"Follow up: {contact_submission.firstName} {contact_submission.lastName}",
+            description=f"Service interest: {contact_submission.service}",
+            due_days=3,
+        )
     background_tasks.add_task(send_email_notification, contact_submission.dict())
+
     logger.info(f"Contact form submitted: {contact_submission.email}")
     return ContactFormResponse(
         success=True,
         message="Thank you for your message! We'll get back to you within 12 hours.",
-        contact_id=contact_submission.id
+        contact_id=contact_submission.id,
     )
+
 
 # In-memory status checks
 _status_checks: List[StatusCheck] = []
 
+
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
-    status_obj = StatusCheck(client_name=input.client_name)
-    _status_checks.append(status_obj)
-    return status_obj
+    obj = StatusCheck(client_name=input.client_name)
+    _status_checks.append(obj)
+    return obj
+
 
 @api_router.get("/status", response_model=List[StatusCheck])
 async def get_status_checks():
     return _status_checks
 
+
+# Mount API
 app.include_router(api_router)
 
-# CORS middleware
+# CORS (lock this down in prod)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -188,12 +284,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files from build directory
+# Static files from CRA build
 if os.path.exists("build/static"):
     app.mount("/static", StaticFiles(directory="build/static"), name="static")
     logger.info("✅ Static files mounted successfully")
 else:
     logger.warning("⚠️ Build directory not found")
+
 
 # Root route
 @app.get("/")
@@ -202,7 +299,8 @@ async def root():
         return FileResponse("build/index.html")
     return {"message": "AIzamo API is running", "frontend_build": "missing"}
 
-# Catch-all route for React SPA
+
+# SPA catch-all
 @app.get("/{path:path}")
 async def catch_all(path: str):
     if path.startswith("api/") or path.startswith("static/"):
@@ -210,6 +308,7 @@ async def catch_all(path: str):
     if os.path.exists("build/index.html"):
         return FileResponse("build/index.html")
     return {"error": "Frontend not available", "path": path}
+
 
 if __name__ == "__main__":
     import uvicorn
