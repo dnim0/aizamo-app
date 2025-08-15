@@ -1,0 +1,23 @@
+{
+  "name": "AIzamo Website",
+  "description": "AI Agency Website with GoHighLevel Integration",
+  "keywords": ["ai", "agency", "fastapi", "react"],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    },
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [],
+  "env": {
+    "ENVIRONMENT": "production"
+  }
+}

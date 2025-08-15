@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIzamo Logo - Left-to-Right Underline Design Ideas</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: linear-gradient(135deg, #ece0d1 0%, #dbc1ac 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(150, 114, 89, 0.2);
+        }
+
+        .header h1 {
+            color: #38220f;
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+
+        .header p {
+            color: #634832;
+            font-size: 18px;
+        }
+
+        .designs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .design-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(150, 114, 89, 0.2);
+            box-shadow: 0 8px 32px rgba(150, 114, 89, 0.15);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .design-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .logo-demo {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+            cursor: pointer;
+            background: linear-gradient(135deg, #ece0d1 0%, #dbc1ac 100%);
+            border-radius: 15px;
+            border: 2px solid rgba(150, 114, 89, 0.1);
+        }
+
+        .logo-text {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #967259 0%, #634832 50%, #38220f 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .design-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #38220f;
+            margin-bottom: 10px;
+        }
+
+        .design-desc {
+            font-size: 14px;
+            color: #634832;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .tech-notes {
+            font-size: 12px;
+            color: #967259;
+            font-style: italic;
+        }
+
+        .hover-hint {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(150, 114, 89, 0.2);
+            color: #38220f;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            opacity: 0.7;
+        }
+
+        /* Design 1: Classic Sweep */
+        .design-1 .logo-text {
+            position: relative;
+            overflow: visible;
+        }
+        .design-1 .logo-text::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent 10%, #967259 30%, #634832 70%, transparent 90%);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border-radius: 2px;
+        }
+        .design-1 .logo-demo:hover .logo-text::after {
+            transform: scaleX(1);
+        }
+
+        /* Design 2: Glow Wave */
+        .design-2 .logo-text {
+            position: relative;
+            overflow: visible;
+        }
+        .design-2 .logo-text::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent 5%, #967259 25%, #634832 50%, #967259 75%, transparent 95%);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.9s ease-out;
+            box-shadow: 0 0 15px rgba(150, 114, 89, 0.6), 0 0 25px rgba(150, 114, 89, 0.3);
+            border-radius: 3px;
+        }
+        .design-2 .logo-demo:hover .logo-text::after {
+            transform: scaleX(1);
+        }
+
+        /* Design 3: Double Line */
+        .design-3 .logo-text {
+            position: relative;
+            overflow: visible;
+        }
+        .design-3 .logo-text::before,
+        .design-3 .logo-text::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 15%, #967259 50%, transparent 85%);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.7s ease-out;
+        }
+        .design-3 .logo-text::before {
+            bottom: -4px;
+        }
+        .design-3 .logo-text::after {
+            bottom: -8px;
+            background: linear-gradient(90deg, transparent 15%, #634832 50%, transparent 85%);
+            transition-delay: 0.15s;
+        }
+        .design-3 .logo-demo:hover .logo-text::before,
+        .design-3 .logo-demo:hover .logo-text::after {
+            transform: scaleX(1);
+        }
+
+        /* Design 4: Circuit Trace */
+        .design-4 .logo-text {
+            position: relative;
+            overflow: visible;
+        }
+        .design-4 .logo-text::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent 15%, #967259 25%, #634832 50%, #967259 75%, transparent 85%);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 1s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 0 12px rgba(150, 114, 89, 0.8), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(150, 114, 89, 0.3);
+            border-radius: 2px;
+        }
+        .design-4 .logo-demo:hover .logo-text::after {
+            transform: scaleX(1);
+        }
+
+        /* Design 5: Animated Dots */
+        .design-5 .logo-text {
+            position: relative;
+            overflow: visible;
+        }
+        .design-5 .logo-text::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: repeating-linear-gradient(
+                90deg,
+                #967259 0px,
+                #967259 6px,
+                transparent 6px,
+                transparent 12px
+            );
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.8s ease-out;
+        }
+        .design-5 .logo-demo:hover .logo-text::after {
+            transform: scaleX(1);
+        }
+        .design-5 .logo-demo:hover .logo-text::after {
+            animation: dotFlow 1.5s ease-in-out infinite;
+        }
+        @keyframes dotFlow {
+            0% { background-position: 0 0; }
+            100% { background-position: 24px 0; }
+        }
+
+        /* Design 6: Electrical Spark */
+        .design-6 .logo-text {
+            position: relative;
+            overflow: visible;
+        }
+        .design-6 .logo-text::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                #ffff88 15%, 
+                #967259 35%, 
+                #634832 50%, 
+                #967259 65%, 
+                #ffff88 85%, 
+                transparent 100%
+            );
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.7s ease-out;
+            filter: blur(0.5px);
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.4), 0 0 25px rgba(150, 114, 89, 0.3);
+            border-radius: 2px;
+        }
+        .design-6 .logo-demo:hover .logo-text::after {
+            transform: scaleX(1);
+        }
+        .design-6 .logo-demo:hover .logo-text::after {
+            animation: electricalPulse 1s ease-in-out infinite;
+        }
+        @keyframes electricalPulse {
+            0%, 100% { filter: blur(0.5px) brightness(1); }
+            50% { filter: blur(1px) brightness(1.5); }
+        }
+
+        /* Design 7: Wave Motion */
+        .design-7 .logo-text {
+            position: relative;
+            overflow: visible;
+        }
+        .design-7 .logo-text::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent 10%, #967259 30%, #634832 50%, #967259 70%, transparent 90%);
+            background-size: 200% 100%;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.8s ease-out;
+            border-radius: 3px;
+        }
+        .design-7 .logo-demo:hover .logo-text::after {
+            transform: scaleX(1);
+        }
+        .design-7 .logo-demo:hover .logo-text::after {
+            animation: waveMotion 1.5s ease-in-out infinite;
+        }
+        @keyframes waveMotion {
+            0% { background-position: -100% 0; }
+            100% { background-position: 100% 0; }
+        }
+
+        /* Design 8: Morphing Gradient */
+        .design-8 .logo-text {
+            position: relative;
+            overflow: visible;
+        }
+        .design-8 .logo-text::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #967259 0%, #634832 50%, #38220f 100%);
+            background-size: 300% 100%;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.9s ease-out;
+            border-radius: 3px;
+        }
+        .design-8 .logo-demo:hover .logo-text::after {
+            transform: scaleX(1);
+        }
+        .design-8 .logo-demo:hover .logo-text::after {
+            animation: gradientShift 2s ease-in-out infinite;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 0; }
+            50% { background-position: 100% 0; }
+            100% { background-position: 0% 0; }
+        }
+
+        /* Design 9: Particle Trail */
+        .design-9 .logo-text {
+            position: relative;
+            overflow: visible;
+        }
+        .design-9 .logo-text::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent 10%, #967259 50%, transparent 90%);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 
+                0 0 6px rgba(150, 114, 89, 0.6),
+                3px -1px 4px rgba(150, 114, 89, 0.4),
+                6px -2px 4px rgba(150, 114, 89, 0.2),
+                9px -3px 4px rgba(150, 114, 89, 0.1);
+            border-radius: 2px;
+        }
+        .design-9 .logo-demo:hover .logo-text::after {
+            transform: scaleX(1);
+        }
+
+        /* Design 10: Neural Network */
+        .design-10 .logo-text {
+            position: relative;
+            overflow: visible;
+        }
+        .design-10 .logo-text::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: 
+                radial-gradient(circle at 15% 50%, #967259 3px, transparent 4px),
+                radial-gradient(circle at 35% 50%, #634832 2px, transparent 3px),
+                radial-gradient(circle at 50% 50%, #38220f 3px, transparent 4px),
+                radial-gradient(circle at 65% 50%, #634832 2px, transparent 3px),
+                radial-gradient(circle at 85% 50%, #967259 3px, transparent 4px),
+                linear-gradient(90deg, transparent 5%, rgba(150, 114, 89, 0.3) 25%, rgba(99, 72, 50, 0.3) 50%, rgba(150, 114, 89, 0.3) 75%, transparent 95%);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.9s ease-out;
+        }
+        .design-10 .logo-demo:hover .logo-text::after {
+            transform: scaleX(1);
+        }
+        .design-10 .logo-demo:hover .logo-text::after {
+            animation: neuralPulse 1.2s ease-in-out infinite;
+        }
+        @keyframes neuralPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .implement-btn {
+            background: linear-gradient(135deg, #967259, #634832);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .implement-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(150, 114, 89, 0.4);
+        }
+
+        .controls {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            margin-top: 30px;
+            border: 1px solid rgba(150, 114, 89, 0.2);
+        }
+
+        /* Auto-demo animation */
+        .auto-demo .logo-text::after {
+            animation: demoSweep 3s ease-in-out infinite !important;
+        }
+
+        @keyframes demoSweep {
+            0%, 70% { transform: scaleX(0); }
+            15%, 55% { transform: scaleX(1); }
+        }
+
+        .demo-controls {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(150, 114, 89, 0.1);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 AIzamo Logo - Left-to-Right Underline Design Ideas</h1>
+        <p><strong>Hover over each logo</strong> to see the left-to-right highlight effect! Each design has unique characteristics.</p>
+    </div>
+
+    <div class="designs-grid">
+        <!-- Design 1: Classic Sweep -->
+        <div class="design-card">
+            <div class="logo-demo design-1">
+                <div class="hover-hint">Hover Me!</div>
+                <div class="logo-text">AIzamo</div>
+            </div>
+            <div class="design-title">1. Classic Sweep</div>
+            <div class="design-desc">Smooth left-to-right gradient sweep with elegant cubic-bezier easing.</div>
+            <div class="tech-notes">Clean • Professional • Perfect timing</div>
+            <button class="implement-btn" onclick="startAutoDemo(1)">▶ Auto Demo</button>
+        </div>
+
+        <!-- Design 2: Glow Wave -->
+        <div class="design-card">
+            <div class="logo-demo design-2">
+                <div class="hover-hint">Hover Me!</div>
+                <div class="logo-text">AIzamo</div>
+            </div>
+            <div class="design-title">2. Glow Wave</div>
+            <div class="design-desc">Glowing underline with soft shadow that creates depth and warmth.</div>
+            <div class="tech-notes">Glowing • Depth • Warm feel</div>
+            <button class="implement-btn" onclick="startAutoDemo(2)">▶ Auto Demo</button>
+        </div>
+
+        <!-- Design 3: Double Line -->
+        <div class="design-card">
+            <div class="logo-demo design-3">
+                <div class="hover-hint">Hover Me!</div>
+                <div class="logo-text">AIzamo</div>
+            </div>
+            <div class="design-title">3. Double Line</div>
+            <div class="design-desc">Two-tiered underline effect with staggered animation timing.</div>
+            <div class="tech-notes">Layered • Sophisticated • Staggered timing</div>
+            <button class="implement-btn" onclick="startAutoDemo(3)">▶ Auto Demo</button>
+        </div>
+
+        <!-- Design 4: Circuit Trace -->
+        <div class="design-card">
+            <div class="logo-demo design-4">
+                <div class="hover-hint">Hover Me!</div>
+                <div class="logo-text">AIzamo</div>
+            </div>
+            <div class="design-title">4. Circuit Trace</div>
+            <div class="design-desc">Tech-inspired circuit board trace with inner glow and bounce easing.</div>
+            <div class="tech-notes">Tech aesthetic • Circuit feel • Bounce easing</div>
+            <button class="implement-btn" onclick="startAutoDemo(4)">▶ Auto Demo</button>
+        </div>
+
+        <!-- Design 5: Animated Dots -->
+        <div class="design-card">
+            <div class="logo-demo design-5">
+                <div class="hover-hint">Hover Me!</div>
+                <div class="logo-text">AIzamo</div>
+            </div>
+            <div class="design-title">5. Animated Dots</div>
+            <div class="design-desc">Dotted pattern that flows from left to right with continuous animation.</div>
+            <div class="tech-notes">Dotted pattern • Flowing motion • Continuous</div>
+            <button class="implement-btn" onclick="startAutoDemo(5)">▶ Auto Demo</button>
+        </div>
+
+        <!-- Design 6: Electrical Spark -->
+        <div class="design-card">
+            <div class="logo-demo design-6">
+                <div class="hover-hint">Hover Me!</div>
+                <div class="logo-text">AIzamo</div>
+            </div>
+            <div class="design-title">6. Electrical Spark</div>
+            <div class="design-desc">Electric-inspired effect with yellow highlights and pulsing brightness.</div>
+            <div class="tech-notes">High energy • Electric feel • Brightness pulses</div>
+            <button class="implement-btn" onclick="startAutoDemo(6)">▶ Auto Demo</button>
+        </div>
+
+        <!-- Design 7: Wave Motion -->
+        <div class="design-card">
+            <div class="logo-demo design-7">
+                <div class="hover-hint">Hover Me!</div>
+                <div class="logo-text">AIzamo</div>
+            </div>
+            <div class="design-title">7. Wave Motion</div>
+            <div class="design-desc">Gradient wave that continuously flows left to right with smooth motion.</div>
+            <div class="tech-notes">Wave effect • Smooth flow • Continuous motion</div>
+            <button class="implement-btn" onclick="startAutoDemo(7)">▶ Auto Demo</button>
+        </div>
+
+        <!-- Design 8: Morphing Gradient -->
+        <div class="design-card">
+            <div class="logo-demo design-8">
+                <div class="hover-hint">Hover Me!</div>
+                <div class="logo-text">AIzamo</div>
+            </div>
+            <div class="design-title">8. Morphing Gradient</div>
+            <div class="design-desc">Color-shifting gradient that morphs through your brand colors.</div>
+            <div class="tech-notes">Color morphing • Brand colors • Shifting gradient</div>
+            <button class="implement-btn" onclick="startAutoDemo(8)">▶ Auto Demo</button>
+        </div>
+
+        <!-- Design 9: Particle Trail -->
+        <div class="design-card">
+            <div class="logo-demo design-9">
+                <div class="hover-hint">Hover Me!</div>
+                <div class="logo-text">AIzamo</div>
+            </div>
+            <div class="design-title">9. Particle Trail</div>
+            <div class="design-desc">Underline with trailing particle shadows creating depth and motion.</div>
+            <div class="tech-notes">Particle trail • Shadow depth • Motion blur</div>
+            <button class="implement-btn" onclick="startAutoDemo(9)">▶ Auto Demo</button>
+        </div>
+
+        <!-- Design 10: Neural Network -->
+        <div class="design-card">
+            <div class="logo-demo design-10">
+                <div class="hover-hint">Hover Me!</div>
+                <div class="logo-text">AIzamo</div>
+            </div>
+            <div class="design-title">10. Neural Network</div>
+            <div class="design-desc">Neural nodes with pulsing connections, perfect for AI branding.</div>
+            <div class="tech-notes">AI themed • Neural nodes • Pulsing connections</div>
+            <button class="implement-btn" onclick="startAutoDemo(10)">▶ Auto Demo</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <h2 style="color: #38220f; margin-bottom: 15px;">Choose Your Favorite Design</h2>
+        <p style="color: #634832; margin-bottom: 20px;"><strong>Hover over any logo above</strong> or click "Auto Demo" to see the effect!</p>
+        
+        <div class="demo-controls">
+            <button class="implement-btn" style="padding: 15px 30px; font-size: 16px; margin: 5px;" onclick="startAllDemo()">
+                🎬 Demo All Effects
+            </button>
+            <button class="implement-btn" style="padding: 15px 30px; font-size: 16px; margin: 5px;" onclick="stopAllDemo()">
+                ⏹ Stop All Demos
+            </button>
+        </div>
+        
+        <p style="color: #967259; font-size: 14px; margin-top: 15px; font-style: italic;">
+            Currently implemented: <strong>Classic Sweep (#1)</strong> - Let me know if you want to try a different one!
+        </p>
+    </div>
+
+    <script>
+        let demoIntervals = {};
+
+        function startAutoDemo(designNum) {
+            // Stop any existing demo for this design
+            stopAutoDemo(designNum);
+            
+            const logoDemo = document.querySelector(`.design-${designNum} .logo-demo`);
+            
+            // Add auto-demo class
+            logoDemo.classList.add('auto-demo');
+            
+            // Set interval for continuous demo
+            demoIntervals[designNum] = setInterval(() => {
+                logoDemo.classList.remove('auto-demo');
+                setTimeout(() => {
+                    logoDemo.classList.add('auto-demo');
+                }, 100);
+            }, 3000);
+        }
+
+        function stopAutoDemo(designNum) {
+            if (demoIntervals[designNum]) {
+                clearInterval(demoIntervals[designNum]);
+                delete demoIntervals[designNum];
+            }
+            const logoDemo = document.querySelector(`.design-${designNum} .logo-demo`);
+            if (logoDemo) {
+                logoDemo.classList.remove('auto-demo');
+            }
+        }
+
+        function startAllDemo() {
+            for (let i = 1; i <= 10; i++) {
+                setTimeout(() => {
+                    startAutoDemo(i);
+                }, i * 200);
+            }
+        }
+
+        function stopAllDemo() {
+            for (let i = 1; i <= 10; i++) {
+                stopAutoDemo(i);
+            }
+        }
+
+        // Clean up intervals on page unload
+        window.addEventListener('beforeunload', () => {
+            Object.values(demoIntervals).forEach(interval => {
+                clearInterval(interval);
+            });
+        });
+    </script>
+</body>
+</html>
