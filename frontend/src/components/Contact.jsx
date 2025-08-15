@@ -1,6 +1,8 @@
+// frontend/src/pages/Contact.jsx
 import React, { useState } from 'react';
 import { Send, Calendar, Phone, Mail, MapPin } from 'lucide-react';
 import { mockData } from '../data/mock';
+import CalendlyButton from "../components/CalendlyButton"; // uses useCalendly to load Calendly JS+CSS
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -17,10 +19,7 @@ const Contact = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -29,13 +28,10 @@ const Contact = () => {
     setSubmitMessage('');
 
     try {
-      // Use environment variable for backend URL on Emergent platform
       const backendUrl = process.env.REACT_APP_BACKEND_URL || '';
       const response = await fetch(`${backendUrl}/api/contact`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
 
@@ -43,7 +39,7 @@ const Contact = () => {
 
       if (response.ok && data.success) {
         setIsSubmitting(false);
-        setSubmitMessage('Thank you! We\'ll get back to you within 12 hours.');
+        setSubmitMessage('Thank you! We\'ll get back to you soon.');
         setFormData({
           firstName: '',
           lastName: '',
@@ -53,31 +49,21 @@ const Contact = () => {
           service: '',
           message: ''
         });
-        
-        // Clear message after 8 seconds
-        setTimeout(() => {
-          setSubmitMessage('');
-        }, 8000);
+        setTimeout(() => setSubmitMessage(''), 8000);
       } else {
         throw new Error(data.detail || 'Failed to submit form');
       }
-      
     } catch (error) {
       console.error('Form submission error:', error);
       setIsSubmitting(false);
-      setSubmitMessage(`Error: ${error.message}. Please try again or contact us directly at hello@aizamo.com`);
-      
-      // Clear error message after 10 seconds
-      setTimeout(() => {
-        setSubmitMessage('');
-      }, 10000);
+      setSubmitMessage(`Error: ${error.message}. Please try again or contact us directly at automate@aizamo.com`);
+      setTimeout(() => setSubmitMessage(''), 10000);
     }
   };
 
-  const scheduleCall = () => {
-    // Mock calendar booking action
-    alert('Calendar booking would open here. Integration with Calendly or similar service will be added in backend development.');
-  };
+  // Calendly popup target (your real event URL)
+  const calendlyUrl = "https://calendly.com/dnizamov/aizamo-website-appointment-booking";
+  const prefillName = `${formData.firstName} ${formData.lastName}`.trim();
 
   return (
     <section 
@@ -328,12 +314,17 @@ const Contact = () => {
               >
                 Prefer to talk? Book a free 30-minute consultation call to discuss your AI automation needs.
               </p>
-              <button
-                onClick={scheduleCall}
+
+              {/* Calendly popup button (opens instantly) */}
+              <CalendlyButton
+                url={calendlyUrl}
+                name={prefillName}
+                email={formData.email}
+                utm={{ source: 'website', campaign: 'contact-cta' }}
                 className="btn btn-primary text-lg px-8 py-4"
               >
                 Book Free Consultation
-              </button>
+              </CalendlyButton>
             </div>
 
             {/* Contact Information */}
@@ -351,11 +342,23 @@ const Contact = () => {
               <div className="space-y-4">
                 <div className="flex items-center">
                   <Mail size={20} className="mr-4" style={{ color: 'var(--medium-brown)' }} />
-                  <span style={{ color: 'var(--text-secondary)' }}>hello@aizamo.com</span>
+                  <a
+                    href="mailto:automate@aizamo.com"
+                    style={{ color: 'var(--text-secondary)' }}
+                    className="hover:underline"
+                  >
+                    automate@aizamo.com
+                  </a>
                 </div>
                 <div className="flex items-center">
                   <Phone size={20} className="mr-4" style={{ color: 'var(--medium-brown)' }} />
-                  <span style={{ color: 'var(--text-secondary)' }}>+1 (403) 800-3135</span>
+                  <a
+                    href="tel:+14038003135"
+                    style={{ color: 'var(--text-secondary)' }}
+                    className="hover:underline"
+                  >
+                    +1 (403) 800-3135
+                  </a>
                 </div>
                 <div className="flex items-center">
                   <MapPin size={20} className="mr-4" style={{ color: 'var(--medium-brown)' }} />
