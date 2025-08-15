@@ -50,5 +50,4 @@ test_result.md
 coverage/
 
 # ── Misc (repo-specific)
-.python-version
 .emergent/
