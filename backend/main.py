@@ -1,4 +1,3 @@
-# backend/main.py — Gmail SMTP + GoHighLevel (Mongo-free)
 from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -38,13 +37,15 @@ logger = logging.getLogger(__name__)
 # ── Email (Gmail SMTP)
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+# Use env; default to your business address for non-secrets
+FROM_EMAIL = os.getenv("FROM_EMAIL", "automate@aizamo.com")
+TO_EMAIL = os.getenv("TO_EMAIL", "automate@aizamo.com")
+# Keep secrets in env only; fall back username to FROM_EMAIL for Gmail
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", FROM_EMAIL)
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-FROM_EMAIL = os.getenv("FROM_EMAIL", "hello@aizamo.com")
-TO_EMAIL = os.getenv("TO_EMAIL", "hello@aizamo.com")
 
 # ── GoHighLevel (LeadConnector API)
-GHL_API_KEY = os.getenv("GHL_API_KEY", "")
+GHL_API_KEY = os.getenv("GHL_API_KEY", "")  # keep secret in env
 GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID", "")
 GHL_BASE_URL = "https://services.leadconnectorhq.com"
 
@@ -84,7 +85,7 @@ class ContactFormSubmission(BaseModel):
 
     @validator("phone", pre=True)
     def validate_phone(cls, v):
-        # Why: avoid junk submissions; accept empty, basic length check otherwise
+
         if v and v.strip():
             digits = "".join(filter(str.isdigit, v))
             if len(digits) < 7:
@@ -228,7 +229,6 @@ async def health_check():
 async def submit_contact_form(contact_data: ContactFormCreate, background_tasks: BackgroundTasks):
     contact_submission = ContactFormSubmission(**contact_data.dict())
 
-    # Create GHL contact first to capture its id
     ghl_contact_id: Optional[str] = None
     ghl_res = await create_ghl_contact(contact_submission.dict())
     if isinstance(ghl_res, dict):
@@ -237,7 +237,6 @@ async def submit_contact_form(contact_data: ContactFormCreate, background_tasks:
             or ghl_res.get("id")
         )
 
-    # Queue GHL follow-up task and email send
     if ghl_contact_id:
         background_tasks.add_task(
             create_ghl_task,
@@ -305,9 +304,16 @@ async def root():
 async def catch_all(path: str):
     if path.startswith("api/") or path.startswith("static/"):
         raise HTTPException(status_code=404, detail="Not found")
-    if os.path.exists("build/index.html"):
-        return FileResponse("build/index.html")
-    return {"error": "Frontend not available", "path": path}
+
+    candidate = os.path.join("build", path)
+    if os.path.isfile(candidate):
+        return FileResponse(candidate)
+
+    index = os.path.join("build", "index.html")
+    if os.path.exists(index):
+        return FileResponse(index)
+
+    return JSONResponse({"error": "Frontend not available", "path": path}, status_code=404)
 
 
 if __name__ == "__main__":
