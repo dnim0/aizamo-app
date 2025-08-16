@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -30,8 +31,8 @@ load_dotenv()
 # EmailJS (server-side REST)
 EMAILJS_SERVICE_ID = os.getenv("EMAILJS_SERVICE_ID", "")
 EMAILJS_TEMPLATE_ID = os.getenv("EMAILJS_TEMPLATE_ID", "")
-EMAILJS_PUBLIC_KEY = os.getenv("EMAILJS_PUBLIC_KEY", "")  
-EMAILJS_ORIGIN = os.getenv("EMAILJS_ORIGIN", "")          
+EMAILJS_PUBLIC_KEY = os.getenv("EMAILJS_PUBLIC_KEY", "")  # must start with "public_"
+EMAILJS_ORIGIN = os.getenv("EMAILJS_ORIGIN", "")          # optional; should match EmailJS Allowed Origins
 
 LOCAL_TZ = os.getenv("LOCAL_TZ", "Europe/Moscow")
 
@@ -122,16 +123,21 @@ async def _emailjs_send(template_params: Dict[str, Any]) -> bool:
     payload = {
         "service_id": EMAILJS_SERVICE_ID,
         "template_id": EMAILJS_TEMPLATE_ID,
-        "user_id": EMAILJS_PUBLIC_KEY,      # EmailJS expects public key here
+        "user_id": EMAILJS_PUBLIC_KEY,  # EmailJS public key
         "template_params": template_params,
     }
+
     headers = {"Content-Type": "application/json"}
     if EMAILJS_ORIGIN:
-        headers["origin"] = EMAILJS_ORIGIN  # must match Allowed Origins in EmailJS (optional on server)
+        headers["Origin"] = EMAILJS_ORIGIN  # should match Allowed Origins in EmailJS dashboard
 
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            r = await client.post("https://api.emailjs.com/api/v1.0/email/send", json=payload, headers=headers)
+            r = await client.post(
+                "https://api.emailjs.com/api/v1.0/email/send",
+                json=payload,
+                headers=headers,
+            )
         if r.status_code in (200, 202):
             logger.info("EmailJS: email sent")
             return True
@@ -257,17 +263,33 @@ async def submit_contact_form(contact_data: ContactFormCreate, background_tasks:
         contact_id=contact_submission.id,
     )
 
-# Test endpoint to verify EmailJS wiring from Heroku
-@api_router.post("/test-emailjs")
-async def test_emailjs():
+# Test endpoints to verify EmailJS wiring from Heroku
+@api_router.get("/test-emailjs")
+async def test_emailjs_get():
     sample = {
-        "name": "Test User",
+        "name": "Test User (GET)",
         "company": "AIzamo",
         "service": "Testing",
         "email": "test@aizamo.com",
         "phone": "+1 (403) 800-3135",
         "time": _now_local_str(),
-        "message": "This is a server test from /api/test-emailjs."
+        "message": "Server test from GET /api/test-emailjs."
+    }
+    ok = await _emailjs_send(sample)
+    if not ok:
+        raise HTTPException(status_code=500, detail="EmailJS send failed (check logs)")
+    return {"ok": True}
+
+@api_router.post("/test-emailjs")
+async def test_emailjs_post():
+    sample = {
+        "name": "Test User (POST)",
+        "company": "AIzamo",
+        "service": "Testing",
+        "email": "test@aizamo.com",
+        "phone": "+1 (403) 800-3135",
+        "time": _now_local_str(),
+        "message": "Server test from POST /api/test-emailjs."
     }
     ok = await _emailjs_send(sample)
     if not ok:
