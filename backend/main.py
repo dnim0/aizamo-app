@@ -1,3 +1,4 @@
+# backend/main.py
 from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,6 +8,7 @@ try:
     from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 except Exception:  
     from starlette.middleware.proxy_headers import ProxyHeadersMiddleware  # type: ignore
+
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -15,11 +17,12 @@ import os
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from pydantic import BaseModel, Field, EmailStr, validator
 
 import aiosmtplib
+from aiosmtplib.errors import SMTPException
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import jinja2
@@ -27,6 +30,7 @@ import httpx
 
 # ── Env
 load_dotenv()
+ENV = os.getenv("ENVIRONMENT", "development").lower()
 
 # ── App
 app = FastAPI(
@@ -45,15 +49,16 @@ SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 FROM_EMAIL = os.getenv("FROM_EMAIL", "automate@aizamo.com")
 TO_EMAIL = os.getenv("TO_EMAIL", "automate@aizamo.com")
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", FROM_EMAIL)
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", FROM_EMAIL)  # must be Gmail user
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+EMAIL_DEBUG_SYNC = os.getenv("EMAIL_DEBUG_SYNC", "false").lower() in {"1", "true", "yes"}  # Why: bubble errors
 
 # ── GoHighLevel (LeadConnector API)
 GHL_API_KEY = os.getenv("GHL_API_KEY", "")
 GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID", "")
 GHL_BASE_URL = "https://services.leadconnectorhq.com"
 
-def _ghl_headers() -> dict:
+def _ghl_headers() -> Dict[str, str]:
     return {
         "Authorization": f"Bearer {GHL_API_KEY}",
         "Version": "2021-07-28",
@@ -84,7 +89,7 @@ class ContactFormSubmission(BaseModel):
 
     @validator("phone", pre=True)
     def validate_phone(cls, v):
-    
+        # Why: basic spam guard; allow empty phone
         if v and v.strip():
             digits = "".join(filter(str.isdigit, v))
             if len(digits) < 7:
@@ -123,27 +128,36 @@ def _contact_email_template() -> str:
     </html>
     """
 
-async def send_email_notification(contact_data: dict) -> bool:
+async def send_email_notification(contact_data: Dict[str, Any]) -> bool:
     if not (SMTP_USERNAME and SMTP_PASSWORD):
         logger.warning("Email credentials not configured, skipping email notification")
         return False
+
+    html_content = jinja2.Template(_contact_email_template()).render(**contact_data)
+    message = MIMEMultipart("alternative")
+    message["Subject"] = f"New Contact Form Submission from {contact_data.get('firstName','')} {contact_data.get('lastName','')}".strip()
+    message["From"] = FROM_EMAIL
+    message["To"] = TO_EMAIL
+    message["Reply-To"] = contact_data.get("email", FROM_EMAIL)
+    message.attach(MIMEText(html_content, "html"))
+
     try:
-        html_content = jinja2.Template(_contact_email_template()).render(**contact_data)
-        message = MIMEMultipart("alternative")
-        message["Subject"] = f"New Contact Form Submission from {contact_data['firstName']} {contact_data['lastName']}"
-        message["From"] = FROM_EMAIL
-        message["To"] = TO_EMAIL
-        message["Reply-To"] = contact_data.get("email", FROM_EMAIL)
-        message.attach(MIMEText(html_content, "html"))
-        async with aiosmtplib.SMTP(hostname=SMTP_SERVER, port=SMTP_PORT) as smtp:
+        async with aiosmtplib.SMTP(hostname=SMTP_SERVER, port=SMTP_PORT, timeout=20) as smtp:
+            logger.info(f"SMTP: connect {SMTP_SERVER}:{SMTP_PORT}")
             await smtp.connect()
+            logger.info("SMTP: starttls()")
             await smtp.starttls()
+            logger.info(f"SMTP: login as {SMTP_USERNAME}")
             await smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
-            await smtp.send_message(message)
-        logger.info("Email notification sent")
+            logger.info(f"SMTP: send_message to {TO_EMAIL}")
+            resp = await smtp.send_message(message)
+            logger.info(f"SMTP: response {resp}")
         return True
+    except SMTPException as e:
+        logger.error(f"SMTPException while sending email: {e}")
+        return False
     except Exception as e:
-        logger.error(f"Failed to send email notification: {e}")
+        logger.error(f"General email send error: {e}")
         return False
 
 # ── GoHighLevel
@@ -208,13 +222,34 @@ async def version():
         "time": datetime.utcnow().isoformat() + "Z",
     }
 
+@api_router.post("/test-email")
+async def test_email(payload: Dict[str, Any]):
+    """POST {"to":"you@domain.com"} to trigger a test email immediately."""
+    to = payload.get("to") or TO_EMAIL
+    data = {
+        "firstName": "Test",
+        "lastName": "Send",
+        "email": to,
+        "company": None,
+        "phone": None,
+        "service": "Test",
+        "message": "This is a test email from AIzamo.",
+        "timestamp": datetime.utcnow(),
+    }
+    ok = await send_email_notification(data)
+    if not ok:
+        raise HTTPException(status_code=500, detail="Email send failed (see logs)")
+    return {"ok": True, "to": to}
+
 @api_router.post("/contact", response_model=ContactFormResponse)
 async def submit_contact_form(contact_data: ContactFormCreate, background_tasks: BackgroundTasks):
     contact_submission = ContactFormSubmission(**contact_data.dict())
+
     ghl_contact_id: Optional[str] = None
     ghl_res = await create_ghl_contact(contact_submission.dict())
     if isinstance(ghl_res, dict):
         ghl_contact_id = ((ghl_res.get("contact") or {}).get("id") or ghl_res.get("id"))
+
     if ghl_contact_id:
         background_tasks.add_task(
             create_ghl_task,
@@ -223,7 +258,13 @@ async def submit_contact_form(contact_data: ContactFormCreate, background_tasks:
             description=f"Service interest: {contact_submission.service}",
             due_days=3,
         )
-    background_tasks.add_task(send_email_notification, contact_submission.dict())
+
+    # In debug, send synchronously so errors surface
+    if EMAIL_DEBUG_SYNC:
+        await send_email_notification(contact_submission.dict())
+    else:
+        background_tasks.add_task(send_email_notification, contact_submission.dict())
+
     logger.info(f"Contact form submitted: {contact_submission.email}")
     return ContactFormResponse(
         success=True,
@@ -259,12 +300,13 @@ app.add_middleware(
 )
 
 # ── Proxy/HTTPS/Hosts
-app.add_middleware(ProxyHeadersMiddleware)   
-app.add_middleware(HTTPSRedirectMiddleware)  
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["aizamo.com", "www.aizamo.com", "*.herokuapp.com"],
-)
+app.add_middleware(ProxyHeadersMiddleware)   # Why: honor X-Forwarded-Proto/For from Heroku
+if ENV == "production":
+    app.add_middleware(HTTPSRedirectMiddleware)
+    trusted_hosts = ["aizamo.com", "www.aizamo.com", "*.herokuapp.com"]
+else:
+    trusted_hosts = ["*", "localhost", "127.0.0.1"]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
 
 # ── Security headers + scanner blocking + static cache headers
 SUSPECT_PREFIXES = ("/.", "/wp-", "/wp/", "/xmlrpc.php", "/telescope")
@@ -305,7 +347,7 @@ async def hardening_middleware(request: Request, call_next):
 async def healthz():
     return {"ok": True}
 
-# ── Serve CRA build at root
+# ── Serve CRA build at root (after API is registered)
 BUILD_DIR = os.getenv("BUILD_DIR", "build")
 if os.path.exists(BUILD_DIR):
     app.mount("/", StaticFiles(directory=BUILD_DIR, html=True), name="client")
