@@ -1,4 +1,3 @@
-# backend/main.py — EmailJS + GoHighLevel + security (Mongo-free)
 from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -6,7 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 try:
     from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
-except Exception: 
+except Exception:
     from starlette.middleware.proxy_headers import ProxyHeadersMiddleware  # type: ignore
 
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -18,10 +17,9 @@ import logging
 import uuid
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from pydantic import BaseModel, Field, EmailStr, validator
-import jinja2
 import httpx
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -29,11 +27,13 @@ import httpx
 # ────────────────────────────────────────────────────────────────────────────────
 load_dotenv()
 
+# EmailJS (server-side REST)
 EMAILJS_SERVICE_ID = os.getenv("EMAILJS_SERVICE_ID", "")
 EMAILJS_TEMPLATE_ID = os.getenv("EMAILJS_TEMPLATE_ID", "")
-EMAILJS_PUBLIC_KEY = os.getenv("EMAILJS_PUBLIC_KEY", "")
+EMAILJS_PUBLIC_KEY = os.getenv("EMAILJS_PUBLIC_KEY", "")  
+EMAILJS_ORIGIN = os.getenv("EMAILJS_ORIGIN", "")          
 
-LOCAL_TZ = os.getenv("LOCAL_TZ", "UTC")
+LOCAL_TZ = os.getenv("LOCAL_TZ", "Europe/Moscow")
 
 # GoHighLevel (LeadConnector)
 GHL_API_KEY = os.getenv("GHL_API_KEY", "")
@@ -106,7 +106,7 @@ class ContactFormResponse(BaseModel):
 # Email (EmailJS)
 # ────────────────────────────────────────────────────────────────────────────────
 def _now_local_str() -> str:
-    """Return a nice local time string using LOCAL_TZ env (fallback UTC)."""
+    """Return a nice local time string using LOCAL_TZ env (fallback to UTC if bad)."""
     now_utc = datetime.now(ZoneInfo("UTC"))
     try:
         tz = ZoneInfo(LOCAL_TZ)
@@ -114,33 +114,24 @@ def _now_local_str() -> str:
         tz = ZoneInfo("UTC")
     return now_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S %Z")
 
-async def send_email_via_emailjs(contact: ContactFormSubmission) -> bool:
-    """Sends the contact via EmailJS using your template fields."""
+async def _emailjs_send(template_params: Dict[str, Any]) -> bool:
     if not (EMAILJS_SERVICE_ID and EMAILJS_TEMPLATE_ID and EMAILJS_PUBLIC_KEY):
-        logger.warning("EmailJS not configured; skipping email send")
+        logger.error("EmailJS env missing (SERVICE_ID / TEMPLATE_ID / PUBLIC_KEY).")
         return False
-
-    template_params = {
-        # Your EmailJS template expects these exact names:
-        "name": f"{contact.firstName} {contact.lastName}".strip(),
-        "company": contact.company or "",
-        "service": contact.service,
-        "email": contact.email,
-        "phone": contact.phone or "",
-        "time": _now_local_str(),
-        "message": contact.message,
-    }
 
     payload = {
         "service_id": EMAILJS_SERVICE_ID,
         "template_id": EMAILJS_TEMPLATE_ID,
-        "user_id": EMAILJS_PUBLIC_KEY,          # EmailJS calls this "user_id" (public key)
+        "user_id": EMAILJS_PUBLIC_KEY,      # EmailJS expects public key here
         "template_params": template_params,
     }
+    headers = {"Content-Type": "application/json"}
+    if EMAILJS_ORIGIN:
+        headers["origin"] = EMAILJS_ORIGIN  # must match Allowed Origins in EmailJS (optional on server)
 
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            r = await client.post("https://api.emailjs.com/api/v1.0/email/send", json=payload)
+            r = await client.post("https://api.emailjs.com/api/v1.0/email/send", json=payload, headers=headers)
         if r.status_code in (200, 202):
             logger.info("EmailJS: email sent")
             return True
@@ -149,6 +140,19 @@ async def send_email_via_emailjs(contact: ContactFormSubmission) -> bool:
     except Exception as e:
         logger.error(f"EmailJS exception: {e}")
         return False
+
+async def send_email_via_emailjs(contact: ContactFormSubmission) -> bool:
+    """Send using your EmailJS template fields."""
+    template_params = {
+        "name": f"{contact.firstName} {contact.lastName}".strip(),
+        "company": contact.company or "",
+        "service": contact.service,
+        "email": contact.email,
+        "phone": contact.phone or "",
+        "time": _now_local_str(),
+        "message": contact.message,
+    }
+    return await _emailjs_send(template_params)
 
 # ────────────────────────────────────────────────────────────────────────────────
 # GoHighLevel
@@ -244,8 +248,6 @@ async def submit_contact_form(contact_data: ContactFormCreate, background_tasks:
             logger.error(f"GHL workflow error: {e}")
 
     background_tasks.add_task(_ghl_workflow, contact_submission.dict())
-
-    # Send email via EmailJS
     background_tasks.add_task(send_email_via_emailjs, contact_submission)
 
     logger.info(f"Contact form submitted: {contact_submission.email}")
@@ -254,6 +256,23 @@ async def submit_contact_form(contact_data: ContactFormCreate, background_tasks:
         message="Thank you for your message! We'll get back to you soon.",
         contact_id=contact_submission.id,
     )
+
+# Test endpoint to verify EmailJS wiring from Heroku
+@api_router.post("/test-emailjs")
+async def test_emailjs():
+    sample = {
+        "name": "Test User",
+        "company": "AIzamo",
+        "service": "Testing",
+        "email": "test@aizamo.com",
+        "phone": "+1 (403) 800-3135",
+        "time": _now_local_str(),
+        "message": "This is a server test from /api/test-emailjs."
+    }
+    ok = await _emailjs_send(sample)
+    if not ok:
+        raise HTTPException(status_code=500, detail="EmailJS send failed (check logs)")
+    return {"ok": True}
 
 # Simple status memory
 _status_checks: List[StatusCheck] = []
@@ -329,6 +348,7 @@ async def hardening_middleware(request: Request, call_next):
 async def healthz():
     return {"ok": True}
 
+# Serve CRA build at root
 if os.path.exists(BUILD_DIR):
     app.mount("/", StaticFiles(directory=BUILD_DIR, html=True), name="client")
     logger.info("✅ Mounted CRA build at / (html=True)")
