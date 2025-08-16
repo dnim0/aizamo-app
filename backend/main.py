@@ -27,6 +27,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import jinja2
 import httpx
+import asyncio
 
 # ── Env
 load_dotenv()
@@ -47,24 +48,30 @@ logger = logging.getLogger(__name__)
 # ── Email (Gmail SMTP)
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_TLS_MODE = os.getenv("SMTP_TLS_MODE", "starttls").lower()  # starttls | implicit | none
 FROM_EMAIL = os.getenv("FROM_EMAIL", "automate@aizamo.com")
 TO_EMAIL = os.getenv("TO_EMAIL", "automate@aizamo.com")
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", FROM_EMAIL)  # must be Gmail user
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", FROM_EMAIL)  
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-EMAIL_DEBUG_SYNC = os.getenv("EMAIL_DEBUG_SYNC", "false").lower() in {"1", "true", "yes"}  # Why: bubble errors
+EMAIL_DEBUG_SYNC = os.getenv("EMAIL_DEBUG_SYNC", "false").lower() in {"1", "true", "yes"}
 
 # ── GoHighLevel (LeadConnector API)
 GHL_API_KEY = os.getenv("GHL_API_KEY", "")
 GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID", "")
-GHL_BASE_URL = "https://services.leadconnectorhq.com"
+GHL_BASE_URL = "https://services.leadconnectorhq.com"          # new host
+GHL_FALLBACK_BASE_URL = "https://rest.gohighlevel.com"         # legacy host (fallback)
 
 def _ghl_headers() -> Dict[str, str]:
-    return {
+    # Add LocationId header; many endpoints require it
+    headers = {
         "Authorization": f"Bearer {GHL_API_KEY}",
         "Version": "2021-07-28",
         "Accept": "application/json",
         "Content-Type": "application/json",
     }
+    if GHL_LOCATION_ID:
+        headers["LocationId"] = GHL_LOCATION_ID
+    return headers
 
 # ── Models
 class StatusCheck(BaseModel):
@@ -89,7 +96,6 @@ class ContactFormSubmission(BaseModel):
 
     @validator("phone", pre=True)
     def validate_phone(cls, v):
-        # Why: basic spam guard; allow empty phone
         if v and v.strip():
             digits = "".join(filter(str.isdigit, v))
             if len(digits) < 7:
@@ -128,7 +134,8 @@ def _contact_email_template() -> str:
     </html>
     """
 
-async def send_email_notification(contact_data: Dict[str, Any]) -> bool:
+async def _send_email(contact_data: Dict[str, Any]) -> bool:
+    """Robust Gmail send with TLS mode control and timeouts."""
     if not (SMTP_USERNAME and SMTP_PASSWORD):
         logger.warning("Email credentials not configured, skipping email notification")
         return False
@@ -141,32 +148,51 @@ async def send_email_notification(contact_data: Dict[str, Any]) -> bool:
     message["Reply-To"] = contact_data.get("email", FROM_EMAIL)
     message.attach(MIMEText(html_content, "html"))
 
+    timeout = 20  # seconds
     try:
-        async with aiosmtplib.SMTP(hostname=SMTP_SERVER, port=SMTP_PORT, timeout=20) as smtp:
-            logger.info(f"SMTP: connect {SMTP_SERVER}:{SMTP_PORT}")
-            await smtp.connect()
-            logger.info("SMTP: starttls()")
-            await smtp.starttls()
-            logger.info(f"SMTP: login as {SMTP_USERNAME}")
-            await smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
-            logger.info(f"SMTP: send_message to {TO_EMAIL}")
-            resp = await smtp.send_message(message)
-            logger.info(f"SMTP: response {resp}")
-        return True
+        if SMTP_TLS_MODE == "implicit" or SMTP_PORT == 465:
+            # Implicit TLS (port 465) – do NOT call starttls()
+            logger.info(f"SMTP: implicit TLS connect {SMTP_SERVER}:{SMTP_PORT} as {SMTP_USERNAME}")
+            async with aiosmtplib.SMTP(hostname=SMTP_SERVER, port=SMTP_PORT, use_tls=True, timeout=timeout) as smtp:
+                await smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+                resp = await smtp.send_message(message)
+                logger.info(f"SMTP: sent (implicit TLS) -> {resp}")
+                return True
+        else:
+            # Plain connect, then STARTTLS (port 587 typical)
+            logger.info(f"SMTP: connect {SMTP_SERVER}:{SMTP_PORT} (mode={SMTP_TLS_MODE})")
+            async with aiosmtplib.SMTP(hostname=SMTP_SERVER, port=SMTP_PORT, timeout=timeout) as smtp:
+                await smtp.connect()
+                # Only starttls if not already on TLS and mode allows
+                if SMTP_TLS_MODE == "starttls" and not smtp.is_tls:
+                    logger.info("SMTP: starttls()")
+                    await smtp.starttls()
+                logger.info(f"SMTP: login as {SMTP_USERNAME}")
+                await smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+                resp = await smtp.send_message(message)
+                logger.info(f"SMTP: sent -> {resp}")
+                return True
+    except asyncio.TimeoutError:
+        logger.error("SMTP: timed out")
+        return False
     except SMTPException as e:
-        logger.error(f"SMTPException while sending email: {e}")
+        logger.error(f"SMTPException: {e}")
         return False
     except Exception as e:
-        logger.error(f"General email send error: {e}")
+        logger.error(f"SMTP general error: {e}")
         return False
+
+async def send_email_notification(contact_data: Dict[str, Any]) -> bool:
+    return await _send_email(contact_data)
 
 # ── GoHighLevel
 async def create_ghl_contact(contact: dict) -> Optional[dict]:
+    """Try new LeadConnector host first, then legacy as fallback if 401 Invalid JWT."""
     if not (GHL_API_KEY and GHL_LOCATION_ID):
         logger.info("GHL not configured; skipping contact creation")
         return None
+
     payload = {
-        "locationId": GHL_LOCATION_ID,
         "firstName": contact.get("firstName"),
         "lastName": contact.get("lastName"),
         "email": contact.get("email"),
@@ -176,13 +202,31 @@ async def create_ghl_contact(contact: dict) -> Optional[dict]:
         "tags": ["Website Contact"],
     }
     payload = {k: v for k, v in payload.items() if v is not None}
+
+    headers = _ghl_headers()
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            r = await client.post(f"{GHL_BASE_URL}/contacts/", headers=_ghl_headers(), json=payload)
+            r = await client.post(f"{GHL_BASE_URL}/contacts/", headers=headers, json=payload)
         if r.status_code in (200, 201):
-            logger.info("GHL contact created")
+            logger.info("GHL contact created (primary)")
             return r.json()
         logger.error(f"GHL contact create failed [{r.status_code}]: {r.text}")
+
+        # Fallback try legacy REST host if 401 (some accounts/keys still require it)
+        if r.status_code == 401:
+            legacy_headers = {
+                "Authorization": f"Bearer {GHL_API_KEY}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            }
+            # legacy path is /v1/contacts/
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                r2 = await client.post(f"{GHL_FALLBACK_BASE_URL}/v1/contacts/", headers=legacy_headers, json=payload)
+            if r2.status_code in (200, 201):
+                logger.info("GHL contact created (legacy fallback)")
+                return r2.json()
+            logger.error(f"GHL legacy create failed [{r2.status_code}]: {r2.text}")
+
         return None
     except Exception as e:
         logger.error(f"GHL contact error: {e}")
@@ -193,11 +237,13 @@ async def create_ghl_task(contact_id: str, title: str, description: str = "", du
         return None
     due_date = (datetime.utcnow().date() + timedelta(days=due_days)).isoformat()
     payload = {"title": title, "description": description, "dueDate": due_date, "completed": False}
+
+    headers = _ghl_headers()
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
             r = await client.post(
                 f"{GHL_BASE_URL}/contacts/{contact_id}/tasks",
-                headers=_ghl_headers(),
+                headers=headers,
                 json=payload,
             )
         if r.status_code in (200, 201):
@@ -224,7 +270,7 @@ async def version():
 
 @api_router.post("/test-email")
 async def test_email(payload: Dict[str, Any]):
-    """POST {"to":"you@domain.com"} to trigger a test email immediately."""
+    """POST {"to":"you@domain.com"} to send a test email immediately."""
     to = payload.get("to") or TO_EMAIL
     data = {
         "firstName": "Test",
@@ -245,6 +291,7 @@ async def test_email(payload: Dict[str, Any]):
 async def submit_contact_form(contact_data: ContactFormCreate, background_tasks: BackgroundTasks):
     contact_submission = ContactFormSubmission(**contact_data.dict())
 
+    # Create GHL contact first to capture its id (best effort)
     ghl_contact_id: Optional[str] = None
     ghl_res = await create_ghl_contact(contact_submission.dict())
     if isinstance(ghl_res, dict):
@@ -259,7 +306,7 @@ async def submit_contact_form(contact_data: ContactFormCreate, background_tasks:
             due_days=3,
         )
 
-    # In debug, send synchronously so errors surface
+    # Email: sync in debug, background otherwise
     if EMAIL_DEBUG_SYNC:
         await send_email_notification(contact_submission.dict())
     else:
@@ -300,7 +347,7 @@ app.add_middleware(
 )
 
 # ── Proxy/HTTPS/Hosts
-app.add_middleware(ProxyHeadersMiddleware)   # Why: honor X-Forwarded-Proto/For from Heroku
+app.add_middleware(ProxyHeadersMiddleware)  # Honor x-forwarded-* from Heroku/Proxy
 if ENV == "production":
     app.add_middleware(HTTPSRedirectMiddleware)
     trusted_hosts = ["aizamo.com", "www.aizamo.com", "*.herokuapp.com"]
@@ -308,7 +355,7 @@ else:
     trusted_hosts = ["*", "localhost", "127.0.0.1"]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
 
-# ── Security headers + scanner blocking + static cache headers
+# ── Security/scan blocking + static cache headers
 SUSPECT_PREFIXES = ("/.", "/wp-", "/wp/", "/xmlrpc.php", "/telescope")
 SUSPECT_EXACT = {"/.git", "/.git/config", "/.env", "/info.php", "/phpinfo.php"}
 SUSPECT_EXTS = (".php", ".phps", ".bak", ".env", ".git", ".sql")
@@ -342,7 +389,7 @@ async def hardening_middleware(request: Request, call_next):
 
     return resp
 
-# ── Lightweight health for infra
+# ── Lightweight health
 @app.get("/healthz")
 async def healthz():
     return {"ok": True}
