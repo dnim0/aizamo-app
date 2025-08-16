@@ -1,8 +1,8 @@
 {
-  "name": "aizamo-app",
+  "name": "aizamo-root",
   "private": true,
-  "engines": { "node": ">=20 <21" },
+  "engines": { "node": "20.x" },
   "scripts": {
-    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm --prefix frontend install && npm --prefix frontend run build && rm -rf build && mkdir -p build && cp -a frontend/build/. build/"
+    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm --prefix frontend ci && npm --prefix frontend run build && rm -rf build && mv frontend/build build"
   }
 }
