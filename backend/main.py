@@ -1,13 +1,11 @@
-# backend/main.py — production hardening + simple CRA serving
 from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
-# Proxy/HTTPS/Hosts middlewares
 try:
     from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
-except Exception:  # fallback if present
+except Exception:  
     from starlette.middleware.proxy_headers import ProxyHeadersMiddleware  # type: ignore
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -33,7 +31,7 @@ load_dotenv()
 # ── App
 app = FastAPI(
     title="AIzamo AI Solutions",
-    description="Full-stack website for AIzamo AI Solutions",
+    description="Full-Stack Website - AIzamo AI Solutions",
     version="1.0.0",
 )
 api_router = APIRouter(prefix="/api")
@@ -86,7 +84,7 @@ class ContactFormSubmission(BaseModel):
 
     @validator("phone", pre=True)
     def validate_phone(cls, v):
-        # Why: basic anti-garbage validation; allow empty
+    
         if v and v.strip():
             digits = "".join(filter(str.isdigit, v))
             if len(digits) < 7:
@@ -229,7 +227,7 @@ async def submit_contact_form(contact_data: ContactFormCreate, background_tasks:
     logger.info(f"Contact form submitted: {contact_submission.email}")
     return ContactFormResponse(
         success=True,
-        message="Thank you for your message! We'll get back to you within 12 hours.",
+        message="Thank you for your message! We'll get back to you soon.",
         contact_id=contact_submission.id,
     )
 
@@ -261,8 +259,8 @@ app.add_middleware(
 )
 
 # ── Proxy/HTTPS/Hosts
-app.add_middleware(ProxyHeadersMiddleware)   # Why: respect X-Forwarded-* from Heroku
-app.add_middleware(HTTPSRedirectMiddleware)  # Why: force https
+app.add_middleware(ProxyHeadersMiddleware)   
+app.add_middleware(HTTPSRedirectMiddleware)  
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["aizamo.com", "www.aizamo.com", "*.herokuapp.com"],
@@ -307,7 +305,7 @@ async def hardening_middleware(request: Request, call_next):
 async def healthz():
     return {"ok": True}
 
-# ── Serve CRA build at root (favicons/manifest included automatically)
+# ── Serve CRA build at root
 BUILD_DIR = os.getenv("BUILD_DIR", "build")
 if os.path.exists(BUILD_DIR):
     app.mount("/", StaticFiles(directory=BUILD_DIR, html=True), name="client")
