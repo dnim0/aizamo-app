@@ -1,13 +1,12 @@
-# backend/main.py
+# backend/main.py — EmailJS + GoHighLevel + security (Mongo-free)
 from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
-# Proxy headers (prefer uvicorn’s middleware; fall back to starlette if missing)
 try:
     from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
-except Exception:  # pragma: no cover
+except Exception: 
     from starlette.middleware.proxy_headers import ProxyHeadersMiddleware  # type: ignore
 
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -18,21 +17,35 @@ import os
 import logging
 import uuid
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import List, Optional
 
 from pydantic import BaseModel, Field, EmailStr, validator
-
-import aiosmtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import jinja2
 import httpx
-import asyncio
 
-# ── Env
+# ────────────────────────────────────────────────────────────────────────────────
+# Env
+# ────────────────────────────────────────────────────────────────────────────────
 load_dotenv()
 
-# ── App
+EMAILJS_SERVICE_ID = os.getenv("EMAILJS_SERVICE_ID", "")
+EMAILJS_TEMPLATE_ID = os.getenv("EMAILJS_TEMPLATE_ID", "")
+EMAILJS_PUBLIC_KEY = os.getenv("EMAILJS_PUBLIC_KEY", "")
+
+LOCAL_TZ = os.getenv("LOCAL_TZ", "UTC")
+
+# GoHighLevel (LeadConnector)
+GHL_API_KEY = os.getenv("GHL_API_KEY", "")
+GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID", "")
+GHL_BASE_URL = "https://services.leadconnectorhq.com"
+
+# CRA build dir
+BUILD_DIR = os.getenv("BUILD_DIR", "build")
+
+# ────────────────────────────────────────────────────────────────────────────────
+# App
+# ────────────────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="AIzamo AI Solutions",
     description="Full-Stack Website - AIzamo AI Solutions",
@@ -40,36 +53,13 @@ app = FastAPI(
 )
 api_router = APIRouter(prefix="/api")
 
-# ── Logging
+# Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-logger = logging.getLogger("backend.main")
+logger = logging.getLogger(__name__)
 
-# ── Email (Gmail SMTP)
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-# one of: "ssl" (implicit TLS, port 465), "starttls" (port 587), "off"
-SMTP_SECURITY = os.getenv("SMTP_SECURITY", "starttls").strip().lower()
-SMTP_TIMEOUT = float(os.getenv("SMTP_TIMEOUT", "20"))  # seconds
-
-FROM_EMAIL = os.getenv("FROM_EMAIL", "automate@aizamo.com")
-TO_EMAIL = os.getenv("TO_EMAIL", "automate@aizamo.com")
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", FROM_EMAIL)
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-
-# ── GoHighLevel (LeadConnector API)
-GHL_API_KEY = os.getenv("GHL_API_KEY", "")
-GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID", "")
-GHL_BASE_URL = "https://services.leadconnectorhq.com"
-
-def _ghl_headers() -> dict:
-    return {
-        "Authorization": f"Bearer {GHL_API_KEY}",
-        "Version": "2021-07-28",
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
-
-# ── Models
+# ────────────────────────────────────────────────────────────────────────────────
+# Models
+# ────────────────────────────────────────────────────────────────────────────────
 class StatusCheck(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_name: str
@@ -92,7 +82,6 @@ class ContactFormSubmission(BaseModel):
 
     @validator("phone", pre=True)
     def validate_phone(cls, v):
-        # Only minimal sanity check; accept empty
         if v and v.strip():
             digits = "".join(filter(str.isdigit, v))
             if len(digits) < 7:
@@ -113,76 +102,65 @@ class ContactFormResponse(BaseModel):
     message: str
     contact_id: Optional[str] = None
 
-# ── Email
-def _contact_email_template() -> str:
-    return """
-    <!DOCTYPE html>
-    <html>
-      <body>
-        <h2>New Contact Form Submission</h2>
-        <p><b>Name:</b> {{ firstName }} {{ lastName }}</p>
-        <p><b>Email:</b> {{ email }}</p>
-        {% if company %}<p><b>Company:</b> {{ company }}</p>{% endif %}
-        {% if phone %}<p><b>Phone:</b> {{ phone }}</p>{% endif %}
-        <p><b>Service:</b> {{ service }}</p>
-        <p><b>Message:</b><br>{{ message }}</p>
-        <p>Submitted: {{ timestamp.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>
-      </body>
-    </html>
-    """
-
-async def _smtp_send(message) -> None:
-    """Connects and sends using configured TLS mode; raises on failure."""
-    # Choose security mode automatically from env/port
-    mode = SMTP_SECURITY
-    if SMTP_PORT == 465 and mode == "starttls":
-        mode = "ssl"
-    logger.info(f"SMTP: connect {SMTP_SERVER}:{SMTP_PORT} (mode={mode})")
-
-    if mode == "ssl":
-        smtp = aiosmtplib.SMTP(hostname=SMTP_SERVER, port=SMTP_PORT, use_tls=True, timeout=SMTP_TIMEOUT)
-        await smtp.connect()
-        await smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
-        await smtp.send_message(message)
-        await smtp.quit()
-        return
-
-    smtp = aiosmtplib.SMTP(hostname=SMTP_SERVER, port=SMTP_PORT, timeout=SMTP_TIMEOUT)
-    await smtp.connect()
-    if mode == "starttls":
-        await smtp.starttls()
-    await smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
-    await smtp.send_message(message)
-    await smtp.quit()
-
-async def send_email_notification(contact_data: dict) -> bool:
-    if not (SMTP_USERNAME and SMTP_PASSWORD):
-        logger.warning("Email credentials not configured, skipping email notification")
-        return False
+# ────────────────────────────────────────────────────────────────────────────────
+# Email (EmailJS)
+# ────────────────────────────────────────────────────────────────────────────────
+def _now_local_str() -> str:
+    """Return a nice local time string using LOCAL_TZ env (fallback UTC)."""
+    now_utc = datetime.now(ZoneInfo("UTC"))
     try:
-        html_content = jinja2.Template(_contact_email_template()).render(**contact_data)
-        message = MIMEMultipart("alternative")
-        message["Subject"] = f"New Contact Form Submission from {contact_data['firstName']} {contact_data['lastName']}"
-        message["From"] = FROM_EMAIL
-        message["To"] = TO_EMAIL
-        message["Reply-To"] = contact_data.get("email", FROM_EMAIL)
-        message.attach(MIMEText(html_content, "html"))
+        tz = ZoneInfo(LOCAL_TZ)
+    except Exception:
+        tz = ZoneInfo("UTC")
+    return now_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S %Z")
 
-        # Bound total send time to avoid Heroku H12s
-        await asyncio.wait_for(_smtp_send(message), timeout=min(25.0, SMTP_TIMEOUT + 5.0))
-        logger.info("Email notification sent")
-        return True
-    except asyncio.TimeoutError:
-        logger.error("SMTP send timed out")
+async def send_email_via_emailjs(contact: ContactFormSubmission) -> bool:
+    """Sends the contact via EmailJS using your template fields."""
+    if not (EMAILJS_SERVICE_ID and EMAILJS_TEMPLATE_ID and EMAILJS_PUBLIC_KEY):
+        logger.warning("EmailJS not configured; skipping email send")
         return False
-    except aiosmtplib.errors.SMTPException as e:
-        logger.error(f"SMTPException while sending email: {e}")
+
+    template_params = {
+        # Your EmailJS template expects these exact names:
+        "name": f"{contact.firstName} {contact.lastName}".strip(),
+        "company": contact.company or "",
+        "service": contact.service,
+        "email": contact.email,
+        "phone": contact.phone or "",
+        "time": _now_local_str(),
+        "message": contact.message,
+    }
+
+    payload = {
+        "service_id": EMAILJS_SERVICE_ID,
+        "template_id": EMAILJS_TEMPLATE_ID,
+        "user_id": EMAILJS_PUBLIC_KEY,          # EmailJS calls this "user_id" (public key)
+        "template_params": template_params,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.post("https://api.emailjs.com/api/v1.0/email/send", json=payload)
+        if r.status_code in (200, 202):
+            logger.info("EmailJS: email sent")
+            return True
+        logger.error(f"EmailJS failed [{r.status_code}]: {r.text}")
         return False
     except Exception as e:
-        logger.error(f"Failed to send email notification: {e}")
+        logger.error(f"EmailJS exception: {e}")
         return False
 
-# ── GoHighLevel
+# ────────────────────────────────────────────────────────────────────────────────
+# GoHighLevel
+# ────────────────────────────────────────────────────────────────────────────────
+def _ghl_headers() -> dict:
+    return {
+        "Authorization": f"Bearer {GHL_API_KEY}",
+        "Version": "2021-07-28",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+
 async def create_ghl_contact(contact: dict) -> Optional[dict]:
     if not (GHL_API_KEY and GHL_LOCATION_ID):
         logger.info("GHL not configured; skipping contact creation")
@@ -231,10 +209,12 @@ async def create_ghl_task(contact_id: str, title: str, description: str = "", du
         logger.error(f"GHL task error: {e}")
         return None
 
-# ── API Routes
+# ────────────────────────────────────────────────────────────────────────────────
+# API Routes
+# ────────────────────────────────────────────────────────────────────────────────
 @api_router.get("/health")
 async def health_check():
-    return {"status": "healthy", "database": "not-used", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 @api_router.get("/version")
 async def version():
@@ -244,41 +224,29 @@ async def version():
         "time": datetime.utcnow().isoformat() + "Z",
     }
 
-@api_router.post("/test-email")
-async def test_email(to: Optional[EmailStr] = None):
-    """Synchronous test to verify SMTP end-to-end."""
-    dummy = ContactFormSubmission(
-        firstName="SMTP",
-        lastName="Test",
-        email=to or TO_EMAIL,
-        company=None,
-        phone=None,
-        service="Test",
-        message="This is a test email from AIzamo.",
-    )
-    ok = await send_email_notification(dummy.dict())
-    if not ok:
-        raise HTTPException(status_code=502, detail="SMTP send failed")
-    return {"ok": True, "to": to or TO_EMAIL, "mode": SMTP_SECURITY, "port": SMTP_PORT}
-
 @api_router.post("/contact", response_model=ContactFormResponse)
 async def submit_contact_form(contact_data: ContactFormCreate, background_tasks: BackgroundTasks):
     contact_submission = ContactFormSubmission(**contact_data.dict())
 
-    ghl_contact_id: Optional[str] = None
-    ghl_res = await create_ghl_contact(contact_submission.dict())
-    if isinstance(ghl_res, dict):
-        ghl_contact_id = ((ghl_res.get("contact") or {}).get("id") or ghl_res.get("id"))
+    # Fire-and-forget GHL (won't block email)
+    async def _ghl_workflow(contact_dict: dict):
+        try:
+            res = await create_ghl_contact(contact_dict)
+            contact_id = ((res or {}).get("contact") or {}).get("id") or (res or {}).get("id")
+            if contact_id:
+                await create_ghl_task(
+                    contact_id,
+                    title=f"Follow up: {contact_dict.get('firstName','')} {contact_dict.get('lastName','')}",
+                    description=f"Service interest: {contact_dict.get('service','')}",
+                    due_days=3,
+                )
+        except Exception as e:
+            logger.error(f"GHL workflow error: {e}")
 
-    if ghl_contact_id:
-        background_tasks.add_task(
-            create_ghl_task,
-            ghl_contact_id,
-            title=f"Follow up: {contact_submission.firstName} {contact_submission.lastName}",
-            description=f"Service interest: {contact_submission.service}",
-            due_days=3,
-        )
-    background_tasks.add_task(send_email_notification, contact_submission.dict())
+    background_tasks.add_task(_ghl_workflow, contact_submission.dict())
+
+    # Send email via EmailJS
+    background_tasks.add_task(send_email_via_emailjs, contact_submission)
 
     logger.info(f"Contact form submitted: {contact_submission.email}")
     return ContactFormResponse(
@@ -287,7 +255,7 @@ async def submit_contact_form(contact_data: ContactFormCreate, background_tasks:
         contact_id=contact_submission.id,
     )
 
-# In-memory status checks
+# Simple status memory
 _status_checks: List[StatusCheck] = []
 
 @api_router.post("/status", response_model=StatusCheck)
@@ -300,10 +268,10 @@ async def create_status_check(input: StatusCheckCreate):
 async def get_status_checks():
     return _status_checks
 
-# ── Mount API
+# Mount API
 app.include_router(api_router)
 
-# ── CORS
+# CORS (configurable)
 _allowed = os.getenv("ALLOWED_ORIGINS", "*")
 origins = ["*"] if _allowed == "*" else [o.strip() for o in _allowed.split(",") if o.strip()]
 app.add_middleware(
@@ -314,15 +282,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Proxy/HTTPS/Hosts
-app.add_middleware(ProxyHeadersMiddleware)
-app.add_middleware(HTTPSRedirectMiddleware)
+# Proxy/HTTPS/Hosts
+app.add_middleware(ProxyHeadersMiddleware)        # trust X-Forwarded-* from Heroku router
+app.add_middleware(HTTPSRedirectMiddleware)       # force https
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["aizamo.com", "www.aizamo.com", "*.herokuapp.com"],
 )
 
-# ── Security + static cache headers
+# Security + scanner blocking + cache headers
 SUSPECT_PREFIXES = ("/.", "/wp-", "/wp/", "/xmlrpc.php", "/telescope")
 SUSPECT_EXACT = {"/.git", "/.git/config", "/.env", "/info.php", "/phpinfo.php"}
 SUSPECT_EXTS = (".php", ".phps", ".bak", ".env", ".git", ".sql")
@@ -356,8 +324,11 @@ async def hardening_middleware(request: Request, call_next):
 
     return resp
 
-# ── Serve CRA build at root
-BUILD_DIR = os.getenv("BUILD_DIR", "build")
+# Lightweight health for infra
+@app.get("/healthz")
+async def healthz():
+    return {"ok": True}
+
 if os.path.exists(BUILD_DIR):
     app.mount("/", StaticFiles(directory=BUILD_DIR, html=True), name="client")
     logger.info("✅ Mounted CRA build at / (html=True)")
