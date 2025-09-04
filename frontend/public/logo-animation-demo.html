@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIzamo Logo Animation Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: linear-gradient(135deg, #ece0d1 0%, #dbc1ac 100%);
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Navigation Bar (final destination) */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: rgba(236, 224, 209, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(150, 114, 89, 0.1);
+            z-index: 100;
+            opacity: 0;
+            animation: navbarFadeIn 0.5s ease 3s forwards;
+        }
+
+        .navbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .nav-link {
+            color: #634832;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .contact-btn {
+            background: #967259;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Logo Animation Container */
+        .logo-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200;
+            animation: logoAnimation 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .logo-container.final-position {
+            top: 40px;
+            left: 120px;
+            transform: translate(0, -50%);
+        }
+
+        /* Logo Styles */
+        .logo {
+            font-size: 72px;
+            font-weight: 700;
+            color: #38220f;
+            position: relative;
+            animation: logoScale 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        /* Circuit Dots */
+        .circuit-dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #967259;
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: pulse 2s infinite;
+        }
+
+        .circuit-dot:nth-child(1) { 
+            top: 20%; 
+            left: -40px; 
+            animation-delay: 0s; 
+        }
+        .circuit-dot:nth-child(2) { 
+            top: 70%; 
+            left: 25%; 
+            animation-delay: 0.5s; 
+        }
+        .circuit-dot:nth-child(3) { 
+            top: 40%; 
+            right: -40px; 
+            animation-delay: 1s; 
+        }
+        .circuit-dot:nth-child(4) { 
+            bottom: 25%; 
+            right: 30%; 
+            animation-delay: 1.5s; 
+        }
+
+        /* Connecting line */
+        .connecting-line {
+            position: absolute;
+            top: 50%;
+            left: -60px;
+            right: -60px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #967259, transparent);
+            transform: translateY(-50%);
+            opacity: 0.3;
+        }
+
+        /* Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            background: #967259;
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* Control Panel */
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 300;
+            text-align: center;
+        }
+
+        .replay-btn {
+            background: #967259;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 32px rgba(150, 114, 89, 0.3);
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .replay-btn:hover {
+            background: #634832;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(150, 114, 89, 0.4);
+        }
+
+        .info-text {
+            color: #38220f;
+            font-size: 16px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 12px 24px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Animations */
+        @keyframes logoAnimation {
+            0% {
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            70% {
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(0.6);
+            }
+            100% {
+                top: 40px;
+                left: 120px;
+                transform: translate(0, -50%) scale(0.4);
+            }
+        }
+
+        @keyframes logoScale {
+            0% {
+                font-size: 72px;
+            }
+            100% {
+                font-size: 32px;
+            }
+        }
+
+        @keyframes navbarFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 0.3; 
+                transform: scale(1); 
+            }
+            50% { 
+                opacity: 1; 
+                transform: scale(1.5); 
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0.4;
+            }
+            25% {
+                transform: translateY(-20px) rotate(90deg);
+                opacity: 0.6;
+            }
+            50% {
+                transform: translateY(-40px) rotate(180deg);
+                opacity: 0.2;
+            }
+            75% {
+                transform: translateY(-20px) rotate(270deg);
+                opacity: 0.6;
+            }
+        }
+
+        /* Loading States */
+        .loading-text {
+            position: absolute;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 18px;
+            color: #634832;
+            opacity: 0;
+            animation: loadingText 3s ease forwards;
+        }
+
+        @keyframes loadingText {
+            0% {
+                opacity: 0;
+            }
+            20% {
+                opacity: 1;
+            }
+            80% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Navigation Bar (appears after animation) -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div><!-- Logo will appear here after animation --></div>
+            <div class="nav-links">
+                <a href="#" class="nav-link">Services</a>
+                <a href="#" class="nav-link">About</a>
+                <a href="#" class="nav-link">Reviews</a>
+                <a href="#" class="nav-link">Process</a>
+                <a href="#" class="contact-btn">Contact Us</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Logo Animation -->
+    <div class="logo-container" id="logoContainer">
+        <div class="logo" id="logo">
+            AIzamo
+            <div class="circuit-dot"></div>
+            <div class="circuit-dot"></div>
+            <div class="circuit-dot"></div>
+            <div class="circuit-dot"></div>
+            <div class="connecting-line"></div>
+        </div>
+        <div class="loading-text">Initializing AI Systems...</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="info-text">Watch the logo transition from center to navigation!</div>
+        <button class="replay-btn" onclick="replayAnimation()">🔄 Replay Animation</button>
+    </div>
+
+    <script>
+        // Create floating particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            
+            for (let i = 0; i < 12; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                const size = Math.random() * 4 + 2;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.top = `${Math.random() * 100}%`;
+                
+                particle.style.animationDuration = `${Math.random() * 3 + 4}s`;
+                particle.style.animationDelay = `${Math.random() * 2}s`;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        function replayAnimation() {
+            // Reset logo position
+            const logoContainer = document.getElementById('logoContainer');
+            const navbar = document.querySelector('.navbar');
+            
+            // Remove existing animations
+            logoContainer.style.animation = 'none';
+            navbar.style.animation = 'none';
+            navbar.style.opacity = '0';
+            
+            // Reset position
+            logoContainer.style.top = '50%';
+            logoContainer.style.left = '50%';
+            logoContainer.style.transform = 'translate(-50%, -50%)';
+            
+            // Force reflow
+            logoContainer.offsetHeight;
+            
+            // Restart animations
+            logoContainer.style.animation = 'logoAnimation 3s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+            navbar.style.animation = 'navbarFadeIn 0.5s ease 3s forwards';
+        }
+
+        // Initialize
+        createParticles();
+        
+        // Auto-replay every 8 seconds for demo
+        setInterval(replayAnimation, 8000);
+    </script>
+</body>
+</html>

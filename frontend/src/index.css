@@ -1,0 +1,322 @@
+/* File: frontend/src/index.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+        "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+        monospace;
+}
+
+/* Prevent sideways jitter on mobile during animations */
+html, body { overflow-x: hidden; }
+
+@layer base {
+  :root {
+        --background: 0 0% 100%;
+        --foreground: 0 0% 3.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 0 0% 3.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 0 0% 3.9%;
+        --primary: 0 0% 9%;
+        --primary-foreground: 0 0% 98%;
+        --secondary: 0 0% 96.1%;
+        --secondary-foreground: 0 0% 9%;
+        --muted: 0 0% 96.1%;
+        --muted-foreground: 0 0% 45.1%;
+        --accent: 0 0% 96.1%;
+        --accent-foreground: 0 0% 9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 0 0% 89.8%;
+        --input: 0 0% 89.8%;
+        --ring: 0 0% 3.9%;
+        --chart-1: 12 76% 61%;
+        --chart-2: 173 58% 39%;
+        --chart-3: 197 37% 24%;
+        --chart-4: 43 74% 66%;
+        --chart-5: 27 87% 67%;
+        --radius: 0.5rem;
+
+        /* matches h-20 (80px) used in Nav */
+        --nav-h: 80px;
+    }
+  .dark {
+        --background: 0 0% 3.9%;
+        --foreground: 0 0% 98%;
+        --card: 0 0% 3.9%;
+        --card-foreground: 0 0% 98%;
+        --popover: 0 0% 3.9%;
+        --popover-foreground: 0 0% 98%;
+        --primary: 0 0% 98%;
+        --primary-foreground: 0 0% 9%;
+        --secondary: 0 0% 14.9%;
+        --secondary-foreground: 0 0% 98%;
+        --muted: 0 0% 14.9%;
+        --muted-foreground: 0 0% 63.9%;
+        --accent: 0 0% 14.9%;
+        --accent-foreground: 0 0% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 0 0% 14.9%;
+        --input: 0 0% 14.9%;
+        --ring: 0 0% 83.1%;
+        --chart-1: 220 70% 50%;
+        --chart-2: 160 60% 45%;
+        --chart-3: 30 80% 55%;
+        --chart-4: 280 65% 60%;
+        --chart-5: 340 75% 55%;
+    }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+}
+
+/* Flowing dots animation for logo underline */
+@keyframes flowingDots {
+  0% { background-position: 0px 0px; }
+  100% { background-position: 24px 0px; }
+}
+
+/* Electrical spark animations */
+@keyframes electricalPulse {
+  0% { opacity: 0.4; filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.5)); }
+  100% { opacity: 1; filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8)); }
+}
+
+@keyframes electricalGlow {
+  0% { opacity: 0.5; filter: blur(1px); }
+  100% { opacity: 1; filter: blur(2px); }
+}
+
+@keyframes electricalBrightness {
+  0% { opacity: 0.7; filter: drop-shadow(0 0 3px rgba(255, 255, 0, 0.7)); }
+  100% { opacity: 1; filter: drop-shadow(0 0 6px rgba(255, 255, 0, 1)); }
+}
+
+/* Wave motion animation */
+@keyframes waveFlow {
+  0% { background-position: 0% 0%; transform: translateX(-20%); }
+  100% { background-position: 100% 0%; transform: translateX(20%); }
+}
+
+/* Morphing gradient animations */
+@keyframes morphingColors {
+  0% { background: linear-gradient(90deg, transparent 0%, #947C70 25%, #402E2A 50%, #947C70 75%, transparent 100%); }
+  25% { background: linear-gradient(90deg, transparent 0%, #402E2A 25%, #947C70 50%, #402E2A 75%, transparent 100%); }
+  50% { background: linear-gradient(90deg, transparent 0%, #947C70 25%, #402E2A 50%, #947C70 75%, transparent 100%); }
+  75% { background: linear-gradient(90deg, transparent 0%, #EDE3DB 25%, #947C70 50%, #402E2A 75%, transparent 100%); }
+  100% { background: linear-gradient(90deg, transparent 0%, #947C70 25%, #402E2A 50%, #947C70 75%, transparent 100%); }
+}
+
+@keyframes brandColorShift {
+  0% {
+    background: linear-gradient(90deg, transparent 0%, #EDE3DB 20%, #947C70 40%, #402E2A 60%, #947C70 80%, transparent 100%);
+    filter: hue-rotate(0deg) saturate(1);
+  }
+  50% {
+    background: linear-gradient(90deg, transparent 0%, #947C70 20%, #402E2A 40%, #947C70 60%, #EDE3DB 80%, transparent 100%);
+    filter: hue-rotate(5deg) saturate(1.1);
+  }
+  100% {
+    background: linear-gradient(90deg, transparent 0%, #402E2A 20%, #947C70 40%, #EDE3DB 60%, #947C70 80%, transparent 100%);
+    filter: hue-rotate(0deg) saturate(1);
+  }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+@keyframes warmGlow {
+  0% { opacity: 0.4; filter: blur(1px); }
+  100% { opacity: 0.8; filter: blur(2px); }
+}
+
+@keyframes colorCycle {
+  0% { --current-brand-color: #947C70; opacity: 0.5; }
+  25% { --current-brand-color: #402E2A; opacity: 0.8; }
+  50% { --current-brand-color: #947C70; opacity: 1; }
+  75% { --current-brand-color: #EDE3DB; opacity: 0.8; }
+  100% { --current-brand-color: #947C70; opacity: 0.5; }
+}
+
+/* Particle trail animations */
+@keyframes particleFloat {
+  0% { transform: translateY(0px) scale(1); opacity: 0.4; }
+  50% { transform: translateY(-0.5px) scale(1.05); opacity: 0.8; }
+  100% { transform: translateY(0px) scale(1); opacity: 0.4; }
+}
+
+@keyframes motionBlur {
+  0% { opacity: 0.5; filter: blur(2px); transform: translateY(-0.5px) scaleX(1); }
+  100% { opacity: 0.9; filter: blur(3px); transform: translateY(-0.5px) scaleX(1.02); }
+}
+
+@keyframes particleTrail {
+  0% {
+    opacity: 0.3;
+    transform: translateY(-1px) translateX(-2px);
+    filter: drop-shadow(0 1px 2px rgba(150, 114, 89, 0.3));
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px) translateX(0px);
+    filter: drop-shadow(0 2px 4px rgba(150, 114, 89, 0.5));
+  }
+  100% {
+    opacity: 0.6;
+    transform: translateY(-1px) translateX(2px);
+    filter: drop-shadow(0 1px 2px rgba(150, 114, 89, 0.3));
+  }
+}
+
+@keyframes shadowDepth {
+  0% { opacity: 0.3; transform: translateY(1px) scaleY(0.8); filter: blur(1px); }
+  100% { opacity: 0.7; transform: translateY(2px) scaleY(1); filter: blur(2px); }
+}
+
+/* Neural network animations */
+@keyframes neuralPulse {
+  0% { opacity: 0.5; transform: scale(1); filter: brightness(1); }
+  50% { opacity: 1; transform: scale(1.05); filter: brightness(1.2); }
+  100% { opacity: 0.5; transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes neuralConnections {
+  0% { opacity: 0.4; filter: drop-shadow(0 0 1px rgba(150, 114, 89, 0.5)); }
+  100% { opacity: 1; filter: drop-shadow(0 0 3px rgba(150, 114, 89, 0.8)); }
+}
+
+@keyframes aiGlow {
+  0% { opacity: 0.3; filter: blur(2px); transform: translateY(-0.5px) scaleY(0.8); }
+  100% { opacity: 0.8; filter: blur(3px); transform: translateY(-0.5px) scaleY(1.2); }
+}
+
+@keyframes neuralSignals {
+  0% {
+    opacity: 0.3; transform: translateX(-10%);
+    filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.4));
+  }
+  25% {
+    opacity: 0.8; transform: translateX(0%);
+    filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));
+  }
+  50% {
+    opacity: 1; transform: translateX(5%);
+    filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8));
+  }
+  75% {
+    opacity: 0.8; transform: translateX(10%);
+    filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));
+  }
+  100% {
+    opacity: 0.3; transform: translateX(15%);
+    filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.4));
+  }
+}
+
+/* Section Header Underline Animation - Classic Sweep Style */
+.section-header-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.section-header-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #967259 30%, #634832 50%, #967259 70%, transparent 100%);
+  opacity: 0.5;
+  transition: all 0.7s ease-out;
+}
+
+.section-header-underline::before {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 10%, #967259 30%, #634832 50%, #967259 70%, transparent 90%);
+  opacity: 0.8;
+  transform: scaleX(0.4);
+  transform-origin: center;
+  transition: all 0.7s cubic-bezier(0.4, 0.0, 0.2, 1);
+  filter: drop-shadow(0 0 2px rgba(150, 114, 89, 0.3));
+}
+
+/* Animation on page load */
+.section-header-underline.animate-in::before {
+  transform: scaleX(1);
+}
+
+/* Enhanced glow effect */
+.section-header-underline::after {
+  background: linear-gradient(90deg, transparent 20%, rgba(150, 114, 89, 0.9) 40%, rgba(99, 72, 50, 1) 50%, rgba(150, 114, 89, 0.9) 60%, transparent 80%);
+  opacity: 1;
+  filter: brightness(1.1);
+}
+
+/* === Nav + Hero + Mobile jitter utilities === */
+@layer utilities {
+  /* Mobile→Desktop gutters */
+  .page-pad      { @apply px-4 sm:px-4 md:px-5 lg:px-6 xl:px-8 2xl:px-10; }
+  /* Slightly tighter gutters for the header */
+  .page-pad-nav  { @apply px-4 sm:px-4 md:px-5 lg:px-5 xl:px-6 2xl:px-8; }
+
+  /* Full-bleed container (kills Tailwind max-width) */
+  .container-fluid { @apply w-full max-w-none; }
+
+  /* Push main content below fixed nav */
+  .main-offset   { padding-top: var(--nav-h); }
+
+  /* Anchor targets won’t hide under fixed nav */
+  .anchor-offset { scroll-margin-top: calc(var(--nav-h) + 12px); }
+
+  /* Hero height: full viewport minus nav (modern) */
+  .hero-vh       { min-height: calc(100svh - var(--nav-h)); }
+
+  /* Fallback for browsers without svh */
+  @supports not (height: 1svh) {
+    .hero-vh { min-height: calc(100vh - var(--nav-h)); }
+  }
+
+  /* Nav layer: disable blur on mobile (prevents iOS twitch), enable from md+ */
+  .nav-layer { will-change: transform; }
+  @media (max-width: 767px) {
+    .nav-layer {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+      transform: translateZ(0);
+    }
+  }
+  @media (min-width: 768px) {
+    .nav-layer {
+      -webkit-backdrop-filter: saturate(180%) blur(12px);
+      backdrop-filter: saturate(180%) blur(12px);
+      transform: translateZ(0);
+    }
+  }
+}
