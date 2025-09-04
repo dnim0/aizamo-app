@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIzamo - 15 Advanced Neural AI Transitions</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: linear-gradient(135deg, #ece0d1 0%, #dbc1ac 100%);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(150, 114, 89, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            color: #38220f;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #634832;
+            font-size: 16px;
+        }
+
+        .transitions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .transition-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 18px;
+            border: 1px solid rgba(150, 114, 89, 0.2);
+            box-shadow: 0 8px 32px rgba(150, 114, 89, 0.15);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            height: 320px;
+        }
+
+        .transition-preview {
+            position: relative;
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(135deg, #ece0d1 0%, #dbc1ac 100%);
+            border-radius: 15px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .transition-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #38220f;
+            margin-bottom: 6px;
+        }
+
+        .transition-desc {
+            font-size: 13px;
+            color: #634832;
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+
+        .tech-features {
+            font-size: 11px;
+            color: #967259;
+            font-style: italic;
+        }
+
+        .play-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #967259;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(150, 114, 89, 0.4);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.1);
+            background: #634832;
+        }
+
+        /* Logo base styles */
+        .logo {
+            font-size: 36px;
+            font-weight: 700;
+            color: #38220f;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: none;
+        }
+
+        .loading-text {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #634832;
+            opacity: 0;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 8px;
+            left: 15px;
+            right: 15px;
+            height: 2px;
+            background: rgba(150, 114, 89, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #967259, #634832);
+            width: 0%;
+            border-radius: 2px;
+        }
+
+        /* 1. Neural Synapses Firing */
+        .intro-1.active .logo {
+            animation: neuralSynapses 4s ease forwards;
+        }
+        .intro-1.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -30px;
+            background: radial-gradient(circle at 20% 30%, #967259 2px, transparent 3px),
+                        radial-gradient(circle at 80% 70%, #634832 2px, transparent 3px),
+                        radial-gradient(circle at 60% 20%, #38220f 1px, transparent 2px),
+                        radial-gradient(circle at 40% 80%, #967259 1px, transparent 2px),
+                        radial-gradient(circle at 90% 40%, #634832 2px, transparent 3px);
+            animation: synapsesPulse 4s ease forwards;
+        }
+        .intro-1.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-1.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes neuralSynapses {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.3);
+                filter: blur(10px);
+            }
+            30% {
+                opacity: 0.6;
+                transform: translate(-50%, -50%) scale(0.7);
+                filter: blur(5px) drop-shadow(0 0 20px #967259);
+            }
+            60% {
+                opacity: 0.8;
+                transform: translate(-50%, -50%) scale(0.9);
+                filter: blur(2px) drop-shadow(0 0 30px #634832);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+                filter: blur(0px) drop-shadow(0 0 10px rgba(150, 114, 89, 0.3));
+            }
+        }
+
+        @keyframes synapsesPulse {
+            0% { opacity: 0; }
+            20% { opacity: 0.8; }
+            40% { opacity: 0.6; }
+            60% { opacity: 1; }
+            80% { opacity: 0.4; }
+            100% { opacity: 0.2; }
+        }
+
+        /* 2. Quantum Neural Network */
+        .intro-2.active .logo {
+            animation: quantumNeural 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        .intro-2.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -25px;
+            background: 
+                conic-gradient(from 0deg, transparent, #967259, transparent, #634832, transparent),
+                conic-gradient(from 180deg, transparent, #38220f, transparent, #967259, transparent);
+            animation: quantumSpin 4s linear forwards;
+            border-radius: 50%;
+            opacity: 0;
+        }
+        .intro-2.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-2.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes quantumNeural {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.2) rotateX(90deg);
+                filter: hue-rotate(0deg) brightness(0.5);
+            }
+            25% {
+                opacity: 0.4;
+                transform: translate(-50%, -50%) scale(0.6) rotateX(45deg);
+                filter: hue-rotate(90deg) brightness(1.5);
+            }
+            50% {
+                opacity: 0.7;
+                transform: translate(-50%, -50%) scale(0.8) rotateX(22deg);
+                filter: hue-rotate(180deg) brightness(2);
+            }
+            75% {
+                opacity: 0.9;
+                transform: translate(-50%, -50%) scale(0.95) rotateX(5deg);
+                filter: hue-rotate(270deg) brightness(1.2);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1) rotateX(0deg);
+                filter: hue-rotate(360deg) brightness(1);
+            }
+        }
+
+        @keyframes quantumSpin {
+            0% {
+                opacity: 0;
+                transform: rotate(0deg) scale(0.5);
+            }
+            30% {
+                opacity: 1;
+                transform: rotate(180deg) scale(1);
+            }
+            100% {
+                opacity: 0.3;
+                transform: rotate(720deg) scale(1.2);
+            }
+        }
+
+        /* 3. Deep Learning Layers */
+        .intro-3.active .logo {
+            animation: deepLearning 4s ease forwards;
+        }
+        .intro-3.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -20px;
+            background: 
+                linear-gradient(0deg, transparent 40%, rgba(150, 114, 89, 0.3) 45%, rgba(150, 114, 89, 0.3) 55%, transparent 60%),
+                linear-gradient(0deg, transparent 60%, rgba(99, 72, 50, 0.3) 65%, rgba(99, 72, 50, 0.3) 75%, transparent 80%),
+                linear-gradient(0deg, transparent 20%, rgba(56, 34, 15, 0.3) 25%, rgba(56, 34, 15, 0.3) 35%, transparent 40%);
+            animation: layersActivate 4s ease forwards;
+        }
+        .intro-3.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-3.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes deepLearning {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.4);
+                filter: blur(8px);
+            }
+            33% {
+                opacity: 0.5;
+                transform: translate(-50%, -50%) scale(0.7);
+                filter: blur(4px);
+            }
+            66% {
+                opacity: 0.8;
+                transform: translate(-50%, -50%) scale(0.9);
+                filter: blur(2px);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+                filter: blur(0px);
+            }
+        }
+
+        @keyframes layersActivate {
+            0% { opacity: 0; }
+            20% { opacity: 0.8; background-position: 0 -100px; }
+            40% { opacity: 0.6; background-position: 0 -50px; }
+            60% { opacity: 0.9; background-position: 0 0; }
+            80% { opacity: 0.4; background-position: 0 50px; }
+            100% { opacity: 0.2; background-position: 0 100px; }
+        }
+
+        /* 4. Neural Pathways Connecting */
+        .intro-4.active .logo {
+            animation: neuralPathways 4s ease forwards;
+        }
+        .intro-4.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -35px;
+            background-image: 
+                radial-gradient(2px 2px at 10% 20%, #967259, transparent),
+                radial-gradient(2px 2px at 90% 80%, #634832, transparent),
+                radial-gradient(1px 1px at 70% 30%, #38220f, transparent),
+                radial-gradient(2px 2px at 30% 90%, #967259, transparent),
+                linear-gradient(45deg, transparent 48%, rgba(150, 114, 89, 0.6) 49%, rgba(150, 114, 89, 0.6) 51%, transparent 52%),
+                linear-gradient(-45deg, transparent 48%, rgba(99, 72, 50, 0.6) 49%, rgba(99, 72, 50, 0.6) 51%, transparent 52%);
+            animation: pathwaysConnect 4s ease forwards;
+        }
+        .intro-4.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-4.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes neuralPathways {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes pathwaysConnect {
+            0% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            25% {
+                opacity: 0.3;
+                transform: scale(0.7);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(0.9);
+            }
+            75% {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+            100% {
+                opacity: 0.6;
+                transform: scale(1);
+            }
+        }
+
+        /* 5. AI Consciousness Bloom */
+        .intro-5.active .logo {
+            animation: consciousnessBloom 4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+        .intro-5.active .logo::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(150, 114, 89, 0.4) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: consciousnessRipple 4s ease-in-out forwards;
+        }
+        .intro-5.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-5.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes consciousnessBloom {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.1);
+                filter: brightness(0.3) saturate(0);
+            }
+            30% {
+                opacity: 0.5;
+                transform: translate(-50%, -50%) scale(0.6);
+                filter: brightness(1.8) saturate(0.5);
+            }
+            60% {
+                opacity: 0.8;
+                transform: translate(-50%, -50%) scale(0.9);
+                filter: brightness(2.5) saturate(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+                filter: brightness(1) saturate(1);
+            }
+        }
+
+        @keyframes consciousnessRipple {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+            40% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.4; }
+            60% { transform: translate(-50%, -50%) scale(2); opacity: 0.2; }
+            80% { transform: translate(-50%, -50%) scale(2.5); opacity: 0.1; }
+            100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+        }
+
+        /* 6. Memory Network Formation */
+        .intro-6.active .logo {
+            animation: memoryNetwork 4s ease forwards;
+        }
+        .intro-6.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -40px;
+            background: 
+                repeating-conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(150, 114, 89, 0.3) 10deg, transparent 20deg),
+                repeating-conic-gradient(from 45deg at 50% 50%, transparent 0deg, rgba(99, 72, 50, 0.3) 15deg, transparent 30deg);
+            animation: memoryFormation 4s ease forwards;
+            border-radius: 20px;
+        }
+        .intro-6.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-6.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes memoryNetwork {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.3);
+                letter-spacing: 10px;
+            }
+            50% {
+                opacity: 0.7;
+                transform: translate(-50%, -50%) scale(0.8);
+                letter-spacing: 5px;
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+                letter-spacing: normal;
+            }
+        }
+
+        @keyframes memoryFormation {
+            0% { opacity: 0; transform: rotate(0deg); }
+            25% { opacity: 0.4; transform: rotate(90deg); }
+            50% { opacity: 0.8; transform: rotate(180deg); }
+            75% { opacity: 0.6; transform: rotate(270deg); }
+            100% { opacity: 0.3; transform: rotate(360deg); }
+        }
+
+        /* 7. Cognitive Resonance */
+        .intro-7.active .logo {
+            animation: cognitiveResonance 4s ease forwards;
+        }
+        .intro-7.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -30px;
+            background: 
+                radial-gradient(ellipse at center, transparent 30%, rgba(150, 114, 89, 0.2) 40%, transparent 50%),
+                radial-gradient(ellipse at center, transparent 50%, rgba(99, 72, 50, 0.2) 60%, transparent 70%),
+                radial-gradient(ellipse at center, transparent 70%, rgba(56, 34, 15, 0.2) 80%, transparent 90%);
+            animation: resonanceWaves 4s ease-in-out forwards;
+        }
+        .intro-7.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-7.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes cognitiveResonance {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.6);
+                filter: blur(6px);
+            }
+            25% {
+                opacity: 0.4;
+                transform: translate(-50%, -50%) scale(0.8);
+                filter: blur(4px);
+            }
+            50% {
+                opacity: 0.7;
+                transform: translate(-50%, -50%) scale(1.1);
+                filter: blur(2px);
+            }
+            75% {
+                opacity: 0.9;
+                transform: translate(-50%, -50%) scale(0.95);
+                filter: blur(1px);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+                filter: blur(0px);
+            }
+        }
+
+        @keyframes resonanceWaves {
+            0%, 100% { transform: scale(0.8); opacity: 0; }
+            25% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            75% { transform: scale(1.1); opacity: 0.4; }
+        }
+
+        /* 8. Neural Electrical Storm */
+        .intro-8.active .logo {
+            animation: electricalStorm 4s ease forwards;
+        }
+        .intro-8.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -25px;
+            background: 
+                linear-gradient(45deg, transparent, rgba(255, 255, 0, 0.3), transparent),
+                linear-gradient(-45deg, transparent, rgba(150, 114, 89, 0.6), transparent),
+                radial-gradient(circle, rgba(255, 255, 255, 0.4) 1px, transparent 2px);
+            background-size: 100% 100%, 100% 100%, 10px 10px;
+            animation: electricalPulse 4s ease forwards;
+        }
+        .intro-8.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-8.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes electricalStorm {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.4);
+                filter: brightness(0.5);
+            }
+            20% {
+                opacity: 0.8;
+                transform: translate(-50%, -50%) scale(0.7);
+                filter: brightness(2);
+                text-shadow: 0 0 20px #ffff00;
+            }
+            40% {
+                opacity: 0.6;
+                transform: translate(-50%, -50%) scale(0.9);
+                filter: brightness(3);
+                text-shadow: 0 0 30px #967259;
+            }
+            60% {
+                opacity: 0.9;
+                transform: translate(-50%, -50%) scale(1.1);
+                filter: brightness(1.5);
+                text-shadow: 0 0 15px #634832;
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+                filter: brightness(1);
+                text-shadow: none;
+            }
+        }
+
+        @keyframes electricalPulse {
+            0% { opacity: 0; }
+            10%, 30%, 50% { opacity: 1; background-position: 0 0; }
+            20%, 40%, 60% { opacity: 0.3; background-position: 20px 20px; }
+            100% { opacity: 0; }
+        }
+
+        /* 9. Thought Processing Waves */
+        .intro-9.active .logo {
+            animation: thoughtWaves 4s ease forwards;
+        }
+        .intro-9.active .logo::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #967259, transparent);
+            animation: thoughtScan 4s ease forwards;
+        }
+        .intro-9.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-9.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes thoughtWaves {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1);
+                filter: blur(8px);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+                filter: blur(0px);
+            }
+        }
+
+        @keyframes thoughtScan {
+            0% {
+                top: 0%;
+                opacity: 0;
+            }
+            25% {
+                top: 25%;
+                opacity: 1;
+            }
+            50% {
+                top: 50%;
+                opacity: 1;
+            }
+            75% {
+                top: 75%;
+                opacity: 1;
+            }
+            100% {
+                top: 100%;
+                opacity: 0;
+            }
+        }
+
+        /* 10. AI Brain Hemisphere Sync */
+        .intro-10.active .logo {
+            animation: brainSync 4s ease forwards;
+        }
+        .intro-10.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -20px;
+            background: 
+                linear-gradient(90deg, rgba(150, 114, 89, 0.4) 0%, transparent 50%, rgba(99, 72, 50, 0.4) 100%);
+            animation: hemisphereSync 4s ease forwards;
+            border-radius: 50px;
+        }
+        .intro-10.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-10.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes brainSync {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                opacity: 0.7;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes hemisphereSync {
+            0% { opacity: 0; background-position: -100px 0; }
+            25% { opacity: 0.5; background-position: -50px 0; }
+            50% { opacity: 0.8; background-position: 0 0; }
+            75% { opacity: 0.6; background-position: 50px 0; }
+            100% { opacity: 0.3; background-position: 100px 0; }
+        }
+
+        /* 11. Knowledge Graph Formation */
+        .intro-11.active .logo {
+            animation: knowledgeGraph 4s ease forwards;
+        }
+        .intro-11.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -35px;
+            background: 
+                radial-gradient(2px 2px at 15% 25%, #967259, transparent),
+                radial-gradient(2px 2px at 85% 75%, #634832, transparent),
+                radial-gradient(1px 1px at 60% 15%, #38220f, transparent),
+                radial-gradient(2px 2px at 25% 85%, #967259, transparent),
+                radial-gradient(1px 1px at 75% 35%, #634832, transparent),
+                linear-gradient(23deg, transparent 48%, rgba(150, 114, 89, 0.3) 50%, transparent 52%),
+                linear-gradient(67deg, transparent 48%, rgba(99, 72, 50, 0.3) 50%, transparent 52%),
+                linear-gradient(134deg, transparent 48%, rgba(56, 34, 15, 0.3) 50%, transparent 52%);
+            animation: graphConnect 4s ease forwards;
+        }
+        .intro-11.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-11.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes knowledgeGraph {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.3);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes graphConnect {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) rotate(0deg);
+            }
+            30% {
+                opacity: 0.6;
+                transform: scale(0.8) rotate(60deg);
+            }
+            60% {
+                opacity: 1;
+                transform: scale(1.1) rotate(120deg);
+            }
+            100% {
+                opacity: 0.5;
+                transform: scale(1) rotate(180deg);
+            }
+        }
+
+        /* 12. Algorithmic Awakening */
+        .intro-12.active .logo {
+            animation: algorithmicAwakening 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        .intro-12.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -25px;
+            background: 
+                conic-gradient(from 0deg, #967259, #634832, #38220f, #967259),
+                radial-gradient(circle, transparent 60%, rgba(255, 255, 255, 0.1) 70%);
+            animation: algorithmSpin 4s ease-in-out forwards;
+            border-radius: 15px;
+        }
+        .intro-12.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-12.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes algorithmicAwakening {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.2) rotateY(180deg);
+                filter: blur(10px);
+            }
+            25% {
+                opacity: 0.3;
+                transform: translate(-50%, -50%) scale(0.5) rotateY(135deg);
+                filter: blur(6px);
+            }
+            50% {
+                opacity: 0.6;
+                transform: translate(-50%, -50%) scale(0.8) rotateY(90deg);
+                filter: blur(3px);
+            }
+            75% {
+                opacity: 0.8;
+                transform: translate(-50%, -50%) scale(0.95) rotateY(45deg);
+                filter: blur(1px);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1) rotateY(0deg);
+                filter: blur(0px);
+            }
+        }
+
+        @keyframes algorithmSpin {
+            0% { opacity: 0; transform: rotate(0deg) scale(0.8); }
+            50% { opacity: 1; transform: rotate(180deg) scale(1.2); }
+            100% { opacity: 0.4; transform: rotate(360deg) scale(1); }
+        }
+
+        /* 13. Neural Network Convergence */
+        .intro-13.active .logo {
+            animation: networkConvergence 4s ease forwards;
+        }
+        .intro-13.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -30px;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(150, 114, 89, 0.8) 3px, transparent 4px),
+                radial-gradient(circle at 80% 80%, rgba(99, 72, 50, 0.8) 3px, transparent 4px),
+                radial-gradient(circle at 20% 80%, rgba(56, 34, 15, 0.8) 2px, transparent 3px),
+                radial-gradient(circle at 80% 20%, rgba(150, 114, 89, 0.8) 2px, transparent 3px),
+                linear-gradient(45deg, transparent 49%, rgba(150, 114, 89, 0.6) 49.5%, rgba(150, 114, 89, 0.6) 50.5%, transparent 51%),
+                linear-gradient(-45deg, transparent 49%, rgba(99, 72, 50, 0.6) 49.5%, rgba(99, 72, 50, 0.6) 50.5%, transparent 51%);
+            animation: convergenceConnect 4s ease forwards;
+        }
+        .intro-13.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-13.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes networkConvergence {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.4);
+                filter: blur(5px);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+                filter: blur(0px);
+            }
+        }
+
+        @keyframes convergenceConnect {
+            0% {
+                opacity: 0;
+                transform: scale(2);
+            }
+            25% {
+                opacity: 0.4;
+                transform: scale(1.5);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.2);
+            }
+            75% {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+            100% {
+                opacity: 0.6;
+                transform: scale(1);
+            }
+        }
+
+        /* 14. Data Fusion Matrix */
+        .intro-14.active .logo {
+            animation: dataFusion 4s ease forwards;
+        }
+        .intro-14.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -20px;
+            background: 
+                repeating-linear-gradient(90deg, transparent, rgba(150, 114, 89, 0.3) 2px, transparent 4px),
+                repeating-linear-gradient(0deg, transparent, rgba(99, 72, 50, 0.3) 2px, transparent 4px),
+                radial-gradient(circle, rgba(56, 34, 15, 0.2) 0%, transparent 70%);
+            animation: fusionMatrix 4s ease forwards;
+        }
+        .intro-14.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-14.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes dataFusion {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+                filter: brightness(0.5);
+            }
+            50% {
+                opacity: 0.7;
+                transform: translate(-50%, -50%) scale(0.8);
+                filter: brightness(1.5);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+                filter: brightness(1);
+            }
+        }
+
+        @keyframes fusionMatrix {
+            0% {
+                opacity: 0;
+                background-position: 0 0, 0 0;
+            }
+            25% {
+                opacity: 0.5;
+                background-position: 10px 0, 0 10px;
+            }
+            50% {
+                opacity: 0.8;
+                background-position: 20px 0, 0 20px;
+            }
+            75% {
+                opacity: 0.6;
+                background-position: 30px 0, 0 30px;
+            }
+            100% {
+                opacity: 0.3;
+                background-position: 40px 0, 0 40px;
+            }
+        }
+
+        /* 15. Intelligence Crystallization */
+        .intro-15.active .logo {
+            animation: intelligenceCrystallization 4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+        .intro-15.active .logo::before {
+            content: '';
+            position: absolute;
+            inset: -30px;
+            background: 
+                linear-gradient(45deg, rgba(150, 114, 89, 0.3) 25%, transparent 25%, transparent 75%, rgba(150, 114, 89, 0.3) 75%),
+                linear-gradient(-45deg, rgba(99, 72, 50, 0.3) 25%, transparent 25%, transparent 75%, rgba(99, 72, 50, 0.3) 75%);
+            background-size: 20px 20px;
+            animation: crystallization 4s ease forwards;
+            border-radius: 10px;
+        }
+        .intro-15.active .loading-text {
+            animation: loadingText 4s ease forwards;
+        }
+        .intro-15.active .progress-fill {
+            animation: progressFill 4s ease forwards;
+        }
+
+        @keyframes intelligenceCrystallization {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.1) rotate(45deg);
+                filter: blur(10px) brightness(3);
+            }
+            25% {
+                opacity: 0.3;
+                transform: translate(-50%, -50%) scale(0.4) rotate(30deg);
+                filter: blur(6px) brightness(2.5);
+            }
+            50% {
+                opacity: 0.6;
+                transform: translate(-50%, -50%) scale(0.7) rotate(15deg);
+                filter: blur(3px) brightness(2);
+            }
+            75% {
+                opacity: 0.8;
+                transform: translate(-50%, -50%) scale(0.9) rotate(5deg);
+                filter: blur(1px) brightness(1.5);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                filter: blur(0px) brightness(1);
+            }
+        }
+
+        @keyframes crystallization {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) rotate(0deg);
+                background-size: 5px 5px;
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2) rotate(180deg);
+                background-size: 15px 15px;
+            }
+            100% {
+                opacity: 0.4;
+                transform: scale(1) rotate(360deg);
+                background-size: 20px 20px;
+            }
+        }
+
+        /* Common animations */
+        @keyframes loadingText {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes progressFill {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        /* Controls */
+        .controls {
+            text-align: center;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.95);
+            border-top: 1px solid rgba(150, 114, 89, 0.2);
+        }
+
+        .global-btn {
+            background: linear-gradient(135deg, #967259, #634832);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(150, 114, 89, 0.3);
+        }
+
+        .global-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(150, 114, 89, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧠 AIzamo - 15 Advanced Neural AI Introduction Effects</h1>
+        <p>Inspired by AI Neural Activation - Each effect shows intelligence awakening in a unique way!</p>
+    </div>
+
+    <div class="transitions-grid">
+        <!-- Introduction 1: Neural Synapses Firing -->
+        <div class="transition-card">
+            <div class="transition-preview intro-1" onclick="playIntro(1)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Neural Synapses Firing...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(1)">▶</button>
+            </div>
+            <div class="transition-title">1. Neural Synapses Firing</div>
+            <div class="transition-desc">Multiple synapses firing around logo with cascading neural activation patterns.</div>
+            <div class="tech-features">Multi-point neural firing • Drop shadows • Blur transitions</div>
+        </div>
+
+        <!-- Introduction 2: Quantum Neural Network -->
+        <div class="transition-card">
+            <div class="transition-preview intro-2" onclick="playIntro(2)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Quantum Neural Network...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(2)">▶</button>
+            </div>
+            <div class="transition-title">2. Quantum Neural Network</div>
+            <div class="transition-desc">3D quantum rotation with dual spinning gradient halos and color shifting.</div>
+            <div class="tech-features">3D transforms • Dual gradient halos • Quantum physics feel</div>
+        </div>
+
+        <!-- Introduction 3: Deep Learning Layers -->
+        <div class="transition-card">
+            <div class="transition-preview intro-3" onclick="playIntro(3)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Deep Learning Layers...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(3)">▶</button>
+            </div>
+            <div class="transition-title">3. Deep Learning Layers</div>
+            <div class="transition-desc">Multiple neural network layers activating sequentially from bottom to top.</div>
+            <div class="tech-features">Layer activation • Sequential processing • Deep learning metaphor</div>
+        </div>
+
+        <!-- Introduction 4: Neural Pathways Connecting -->
+        <div class="transition-card">
+            <div class="transition-preview intro-4" onclick="playIntro(4)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Neural Pathways Connecting...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(4)">▶</button>
+            </div>
+            <div class="transition-title">4. Neural Pathways Connecting</div>
+            <div class="transition-desc">Visible neural pathways connecting multiple nodes with diagonal connections.</div>
+            <div class="tech-features">Neural pathway visualization • Node connections • Diagonal synapses</div>
+        </div>
+
+        <!-- Introduction 5: AI Consciousness Bloom -->
+        <div class="transition-card">
+            <div class="transition-preview intro-5" onclick="playIntro(5)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Consciousness Blooming...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(5)">▶</button>
+            </div>
+            <div class="transition-title">5. AI Consciousness Bloom</div>
+            <div class="transition-desc">Consciousness blooms outward with rippling awareness energy and brightness surge.</div>
+            <div class="tech-features">Consciousness metaphor • Energy ripples • Awareness blooming</div>
+        </div>
+
+        <!-- Introduction 6: Memory Network Formation -->
+        <div class="transition-card">
+            <div class="transition-preview intro-6" onclick="playIntro(6)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Memory Network Forming...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(6)">▶</button>
+            </div>
+            <div class="transition-title">6. Memory Network Formation</div>
+            <div class="transition-desc">Complex memory networks form with rotating dual-layer conic gradients.</div>
+            <div class="tech-features">Memory formation • Dual conic gradients • Letter spacing effects</div>
+        </div>
+
+        <!-- Introduction 7: Cognitive Resonance -->
+        <div class="transition-card">
+            <div class="transition-preview intro-7" onclick="playIntro(7)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Cognitive Resonance...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(7)">▶</button>
+            </div>
+            <div class="transition-title">7. Cognitive Resonance</div>
+            <div class="transition-desc">Multiple resonance waves emanate showing cognitive processing synchronization.</div>
+            <div class="tech-features">Resonance waves • Cognitive sync • Multi-layer elliptical gradients</div>
+        </div>
+
+        <!-- Introduction 8: Neural Electrical Storm -->
+        <div class="transition-card">
+            <div class="transition-preview intro-8" onclick="playIntro(8)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Electrical Storm...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(8)">▶</button>
+            </div>
+            <div class="transition-title">8. Neural Electrical Storm</div>
+            <div class="transition-desc">Electrical storms surge through neural networks with lightning-like effects.</div>
+            <div class="tech-features">Electrical effects • Lightning patterns • Brightness storms</div>
+        </div>
+
+        <!-- Introduction 9: Thought Processing Waves -->
+        <div class="transition-card">
+            <div class="transition-preview intro-9" onclick="playIntro(9)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Processing Thoughts...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(9)">▶</button>
+            </div>
+            <div class="transition-title">9. Thought Processing Waves</div>
+            <div class="transition-desc">Scanning thought waves reveal the logo as AI processes information.</div>
+            <div class="tech-features">Thought scanning • Wave processing • Information revelation</div>
+        </div>
+
+        <!-- Introduction 10: AI Brain Hemisphere Sync -->
+        <div class="transition-card">
+            <div class="transition-preview intro-10" onclick="playIntro(10)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Brain Hemispheres Syncing...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(10)">▶</button>
+            </div>
+            <div class="transition-title">10. AI Brain Hemisphere Sync</div>
+            <div class="transition-desc">Left and right brain hemispheres synchronize with gradient wave connections.</div>
+            <div class="tech-features">Hemisphere sync • Brain wave patterns • Neural synchronization</div>
+        </div>
+
+        <!-- Introduction 11: Knowledge Graph Formation -->
+        <div class="transition-card">
+            <div class="transition-preview intro-11" onclick="playIntro(11)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Knowledge Graph Forming...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(11)">▶</button>
+            </div>
+            <div class="transition-title">11. Knowledge Graph Formation</div>
+            <div class="transition-desc">Complex knowledge graphs connect with multi-angle neural pathways.</div>
+            <div class="tech-features">Knowledge graphs • Multi-angle connections • Complex networks</div>
+        </div>
+
+        <!-- Introduction 12: Algorithmic Awakening -->
+        <div class="transition-card">
+            <div class="transition-preview intro-12" onclick="playIntro(12)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Algorithms Awakening...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(12)">▶</button>
+            </div>
+            <div class="transition-title">12. Algorithmic Awakening</div>
+            <div class="transition-desc">Algorithms awaken with 3D Y-rotation and spinning conic gradient background.</div>
+            <div class="tech-features">3D Y-rotation • Algorithm awakening • Spinning conic gradients</div>
+        </div>
+
+        <!-- Introduction 13: Neural Network Convergence -->
+        <div class="transition-card">
+            <div class="transition-preview intro-13" onclick="playIntro(13)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Networks Converging...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(13)">▶</button>
+            </div>
+            <div class="transition-title">13. Neural Network Convergence</div>
+            <div class="transition-desc">Multiple neural networks converge with cross-diagonal connection patterns.</div>
+            <div class="tech-features">Network convergence • Cross-diagonal patterns • Multi-node connections</div>
+        </div>
+
+        <!-- Introduction 14: Data Fusion Matrix -->
+        <div class="transition-card">
+            <div class="transition-preview intro-14" onclick="playIntro(14)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Data Fusion Matrix...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(14)">▶</button>
+            </div>
+            <div class="transition-title">14. Data Fusion Matrix</div>
+            <div class="transition-desc">Data streams fuse in matrix grid patterns with brightness enhancement.</div>
+            <div class="tech-features">Data fusion • Matrix grid patterns • Moving background streams</div>
+        </div>
+
+        <!-- Introduction 15: Intelligence Crystallization -->
+        <div class="transition-card">
+            <div class="transition-preview intro-15" onclick="playIntro(15)">
+                <div class="logo">AIzamo</div>
+                <div class="loading-text">Intelligence Crystallizing...</div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <button class="play-btn" onclick="event.stopPropagation(); playIntro(15)">▶</button>
+            </div>
+            <div class="transition-title">15. Intelligence Crystallization</div>
+            <div class="transition-desc">Intelligence crystallizes from chaos with diamond pattern formation and rotation.</div>
+            <div class="tech-features">Crystallization effect • Diamond patterns • Chaos to order</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="global-btn" onclick="playAllIntros()">🎬 Play All Neural Effects</button>
+        <button class="global-btn" onclick="resetAllIntros()">🔄 Reset All</button>
+        <button class="global-btn" onclick="playNeuralFavorites()">⚡ Play Neural Favorites</button>
+        <button class="global-btn" onclick="randomNeural()">🧠 Random Neural Effect</button>
+    </div>
+
+    <script>
+        let activeIntros = [];
+
+        function playIntro(num) {
+            resetIntro(num);
+            
+            setTimeout(() => {
+                const element = document.querySelector(`.intro-${num}`);
+                element.classList.add('active');
+                activeIntros.push(num);
+                
+                setTimeout(() => {
+                    resetIntro(num);
+                }, 4500);
+            }, 100);
+        }
+
+        function resetIntro(num) {
+            const element = document.querySelector(`.intro-${num}`);
+            element.classList.remove('active');
+            activeIntros = activeIntros.filter(i => i !== num);
+        }
+
+        function resetAllIntros() {
+            for (let i = 1; i <= 15; i++) {
+                resetIntro(i);
+            }
+        }
+
+        function playAllIntros() {
+            resetAllIntros();
+            
+            for (let i = 1; i <= 15; i++) {
+                setTimeout(() => {
+                    playIntro(i);
+                }, i * 400);
+            }
+        }
+
+        function playNeuralFavorites() {
+            const favorites = [1, 2, 5, 8, 12, 15]; // Best neural effects
+            resetAllIntros();
+            
+            favorites.forEach((num, index) => {
+                setTimeout(() => {
+                    playIntro(num);
+                }, index * 600);
+            });
+        }
+
+        function randomNeural() {
+            const randomNum = Math.floor(Math.random() * 15) + 1;
+            playIntro(randomNum);
+        }
+
+        // Auto-demo with emphasis on neural effects
+        let demoIndex = 1;
+        function runNeuralDemo() {
+            playIntro(demoIndex);
+            demoIndex = demoIndex >= 15 ? 1 : demoIndex + 1;
+        }
+
+        // Start demo after page load
+        setTimeout(() => {
+            setInterval(runNeuralDemo, 4500);
+        }, 2000);
+    </script>
+</body>
+</html>
