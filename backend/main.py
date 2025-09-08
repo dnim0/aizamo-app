@@ -228,26 +228,23 @@ async def _smtp_send(subject: str, body: str) -> bool:
     return await run_in_threadpool(_smtp_send_sync, subject, body)
 
 
+# --- replace your entire send_email() with this version ---
+
 async def send_email(contact: ContactFormSubmission) -> bool:
     subject = f"New Contact — {contact.firstName} {contact.lastName} ({contact.service})"
-    body = (
-        f"Time: {_now_local_str()}
-"
-        f"Name: {contact.firstName} {contact.lastName}
-"
-        f"Email: {contact.email}
-"
-        f"Phone: {contact.phone or ''}
-"
-        f"Company: {contact.company or ''}
-"
-        f"Service: {contact.service}
-
-"
-        f"Message:
-{contact.message}
-"
-    )
+    # Why join(): avoids syntax issues from broken quotes during copy/paste
+    lines = [
+        f"Time: {_now_local_str()}",
+        f"Name: {contact.firstName} {contact.lastName}",
+        f"Email: {contact.email}",
+        f"Phone: {contact.phone or ''}",
+        f"Company: {contact.company or ''}",
+        f"Service: {contact.service}",
+        "",
+        "Message:",
+        contact.message,
+    ]
+    body = "\n".join(lines)
 
     # Try EmailJS first
     ok = await _emailjs_send(
@@ -270,7 +267,6 @@ async def send_email(contact: ContactFormSubmission) -> bool:
 
     logger.error("All email transports failed (EmailJS + SMTP)")
     return False
-
 
 # ────────────────────────────────────────────────────────────────────────────────
 # GoHighLevel
