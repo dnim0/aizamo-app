@@ -1,5 +1,6 @@
+# File: backend/main.py
 
-from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Request
+from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Request, Depends
 from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
@@ -22,6 +23,10 @@ from typing import List, Optional, Dict, Any
 
 from pydantic import BaseModel, Field, EmailStr, validator
 import httpx
+import smtplib
+from email.mime.text import MIMEText
+from email.utils import formataddr
+from starlette.concurrency import run_in_threadpool
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Env
@@ -33,6 +38,16 @@ EMAILJS_SERVICE_ID = os.getenv("EMAILJS_SERVICE_ID", "")
 EMAILJS_TEMPLATE_ID = os.getenv("EMAILJS_TEMPLATE_ID", "")
 EMAILJS_PUBLIC_KEY = os.getenv("EMAILJS_PUBLIC_KEY", "")  # must start with "public_"
 EMAILJS_ORIGIN = os.getenv("EMAILJS_ORIGIN", "")          # optional; should match EmailJS Allowed Origins
+EMAIL_DEBUG_SYNC = os.getenv("EMAIL_DEBUG_SYNC", "false").lower() in {"1", "true", "yes"}
+
+# SMTP (fallback if EmailJS misconfigured)
+SMTP_SERVER = os.getenv("SMTP_SERVER", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "0") or 0)
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_SECURITY = (os.getenv("SMTP_SECURITY", "").lower() or "").strip()  # "ssl" | "tls" | ""
+FROM_EMAIL = os.getenv("FROM_EMAIL", "")
+TO_EMAIL = os.getenv("TO_EMAIL", "")
 
 LOCAL_TZ = os.getenv("LOCAL_TZ", "Europe/Moscow")
 
@@ -41,7 +56,7 @@ GHL_API_KEY = os.getenv("GHL_API_KEY", "")
 GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID", "")
 GHL_BASE_URL = "https://services.leadconnectorhq.com"
 
-# CRA build dir
+# Build dir (SPA assets)
 BUILD_DIR = os.getenv("BUILD_DIR", "build")
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -50,7 +65,7 @@ BUILD_DIR = os.getenv("BUILD_DIR", "build")
 app = FastAPI(
     title="AIzamo AI Solutions",
     description="Full-Stack Website - AIzamo AI Solutions",
-    version="1.0.0",
+    version="1.1.0",
 )
 api_router = APIRouter(prefix="/api")
 
@@ -83,8 +98,8 @@ class ContactFormSubmission(BaseModel):
 
     @validator("phone", pre=True)
     def validate_phone(cls, v):
-        if v and v.strip():
-            digits = "".join(filter(str.isdigit, v))
+        if v and str(v).strip():
+            digits = "".join(filter(str.isdigit, str(v)))
             if len(digits) < 7:
                 raise ValueError("Phone number is too short")
         return v
@@ -104,10 +119,10 @@ class ContactFormResponse(BaseModel):
     contact_id: Optional[str] = None
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Email (EmailJS)
+# Helpers
 # ────────────────────────────────────────────────────────────────────────────────
+
 def _now_local_str() -> str:
-    """Return a nice local time string using LOCAL_TZ env (fallback to UTC if bad)."""
     now_utc = datetime.now(ZoneInfo("UTC"))
     try:
         tz = ZoneInfo(LOCAL_TZ)
@@ -115,21 +130,48 @@ def _now_local_str() -> str:
         tz = ZoneInfo("UTC")
     return now_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S %Z")
 
-async def _emailjs_send(template_params: Dict[str, Any]) -> bool:
+# Normalize incoming request (accept JSON or form-encoded)
+async def parse_contact_request(request: Request) -> ContactFormCreate:
+    ct = request.headers.get("content-type", "").lower()
+    data: Dict[str, Any]
+    if "application/json" in ct:
+        data = await request.json()
+    else:
+        form = await request.form()
+        data = {k: form.get(k) for k in ("firstName","lastName","email","company","phone","service","message")}
+    try:
+        return ContactFormCreate(**data)
+    except Exception as e:
+        # Be explicit to help frontend integration
+        raise HTTPException(status_code=422, detail=f"Invalid contact payload: {e}")
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Email sending (EmailJS → SMTP fallback)
+# ────────────────────────────────────────────────────────────────────────────────
+
+def _emailjs_config_ok() -> bool:
+    # Avoid common pitfall: missing "public_" prefix
     if not (EMAILJS_SERVICE_ID and EMAILJS_TEMPLATE_ID and EMAILJS_PUBLIC_KEY):
-        logger.error("EmailJS env missing (SERVICE_ID / TEMPLATE_ID / PUBLIC_KEY).")
+        return False
+    if not EMAILJS_PUBLIC_KEY.startswith("public_"):
+        logger.error("EmailJS public key must start with 'public_' (misconfigured)")
+        return False
+    return True
+
+async def _emailjs_send(template_params: Dict[str, Any]) -> bool:
+    if not _emailjs_config_ok():
         return False
 
     payload = {
         "service_id": EMAILJS_SERVICE_ID,
         "template_id": EMAILJS_TEMPLATE_ID,
-        "user_id": EMAILJS_PUBLIC_KEY,  # EmailJS public key
+        "user_id": EMAILJS_PUBLIC_KEY,
         "template_params": template_params,
     }
 
     headers = {"Content-Type": "application/json"}
     if EMAILJS_ORIGIN:
-        headers["Origin"] = EMAILJS_ORIGIN  # should match Allowed Origins in EmailJS dashboard
+        headers["Origin"] = EMAILJS_ORIGIN
 
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
@@ -139,7 +181,7 @@ async def _emailjs_send(template_params: Dict[str, Any]) -> bool:
                 headers=headers,
             )
         if r.status_code in (200, 202):
-            logger.info("EmailJS: email sent")
+            logger.info("EmailJS: email accepted")
             return True
         logger.error(f"EmailJS failed [{r.status_code}]: {r.text}")
         return False
@@ -147,9 +189,50 @@ async def _emailjs_send(template_params: Dict[str, Any]) -> bool:
         logger.error(f"EmailJS exception: {e}")
         return False
 
-async def send_email_via_emailjs(contact: ContactFormSubmission) -> bool:
-    """Send using your EmailJS template fields."""
-    template_params = {
+def _smtp_send_sync(subject: str, body: str) -> bool:
+    if not (SMTP_SERVER and SMTP_PORT and SMTP_USERNAME and SMTP_PASSWORD and FROM_EMAIL and TO_EMAIL):
+        return False
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["Subject"] = subject
+    msg["From"] = formataddr(("AIzamo", FROM_EMAIL))
+    msg["To"] = TO_EMAIL
+
+    try:
+        if SMTP_SECURITY == "ssl":
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=20) as s:
+                s.login(SMTP_USERNAME, SMTP_PASSWORD)
+                s.sendmail(FROM_EMAIL, [TO_EMAIL], msg.as_string())
+        else:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=20) as s:
+                s.ehlo()
+                if SMTP_SECURITY == "tls":
+                    s.starttls()
+                s.login(SMTP_USERNAME, SMTP_PASSWORD)
+                s.sendmail(FROM_EMAIL, [TO_EMAIL], msg.as_string())
+        logger.info("SMTP: email sent")
+        return True
+    except Exception as e:
+        logger.error(f"SMTP exception: {e}")
+        return False
+
+async def _smtp_send(subject: str, body: str) -> bool:
+    # Run blocking SMTP in thread pool
+    return await run_in_threadpool(_smtp_send_sync, subject, body)
+
+async def send_email(contact: ContactFormSubmission) -> bool:
+    subject = f"New Contact — {contact.firstName} {contact.lastName} ({contact.service})"
+    body = (
+        f"Time: {_now_local_str()}\n"
+        f"Name: {contact.firstName} {contact.lastName}\n"
+        f"Email: {contact.email}\n"
+        f"Phone: {contact.phone or ''}\n"
+        f"Company: {contact.company or ''}\n"
+        f"Service: {contact.service}\n\n"
+        f"Message:\n{contact.message}\n"
+    )
+
+    # Prefer EmailJS if configured properly
+    if await _emailjs_send({
         "name": f"{contact.firstName} {contact.lastName}".strip(),
         "company": contact.company or "",
         "service": contact.service,
@@ -157,12 +240,20 @@ async def send_email_via_emailjs(contact: ContactFormSubmission) -> bool:
         "phone": contact.phone or "",
         "time": _now_local_str(),
         "message": contact.message,
-    }
-    return await _emailjs_send(template_params)
+    }):
+        return True
+
+    # Fallback to SMTP if available
+    if await _smtp_send(subject, body):
+        return True
+
+    logger.error("All email transports failed (EmailJS + SMTP)")
+    return False
 
 # ────────────────────────────────────────────────────────────────────────────────
 # GoHighLevel
 # ────────────────────────────────────────────────────────────────────────────────
+
 def _ghl_headers() -> dict:
     return {
         "Authorization": f"Bearer {GHL_API_KEY}",
@@ -235,10 +326,15 @@ async def version():
     }
 
 @api_router.post("/contact", response_model=ContactFormResponse)
-async def submit_contact_form(contact_data: ContactFormCreate, background_tasks: BackgroundTasks):
+async def submit_contact_form(request: Request, background_tasks: BackgroundTasks):
+    contact_data = await parse_contact_request(request)
     contact_submission = ContactFormSubmission(**contact_data.dict())
 
-    # Fire-and-forget GHL (won't block email)
+    # Fail fast if both email transports are unavailable
+    if not _emailjs_config_ok() and not (SMTP_SERVER and SMTP_PORT and SMTP_USERNAME and SMTP_PASSWORD and FROM_EMAIL and TO_EMAIL):
+        logger.error("No email transport configured (EmailJS misconfigured and SMTP missing)")
+        raise HTTPException(status_code=500, detail="Email service unavailable")
+
     async def _ghl_workflow(contact_dict: dict):
         try:
             res = await create_ghl_contact(contact_dict)
@@ -253,8 +349,15 @@ async def submit_contact_form(contact_data: ContactFormCreate, background_tasks:
         except Exception as e:
             logger.error(f"GHL workflow error: {e}")
 
-    background_tasks.add_task(_ghl_workflow, contact_submission.dict())
-    background_tasks.add_task(send_email_via_emailjs, contact_submission)
+    # Allow sync email in prod debugging if EMAIL_DEBUG_SYNC=true
+    if EMAIL_DEBUG_SYNC:
+        ok = await send_email(contact_submission)
+        if not ok:
+            raise HTTPException(status_code=500, detail="Email send failed (see logs)")
+        background_tasks.add_task(_ghl_workflow, contact_submission.dict())
+    else:
+        background_tasks.add_task(send_email, contact_submission)
+        background_tasks.add_task(_ghl_workflow, contact_submission.dict())
 
     logger.info(f"Contact form submitted: {contact_submission.email}")
     return ContactFormResponse(
@@ -263,7 +366,7 @@ async def submit_contact_form(contact_data: ContactFormCreate, background_tasks:
         contact_id=contact_submission.id,
     )
 
-# Test endpoints to verify EmailJS wiring from Heroku
+# EmailJS tests
 @api_router.get("/test-emailjs")
 async def test_emailjs_get():
     sample = {
@@ -273,28 +376,36 @@ async def test_emailjs_get():
         "email": "test@aizamo.com",
         "phone": "+1 (403) 800-3135",
         "time": _now_local_str(),
-        "message": "Server test from GET /api/test-emailjs."
+        "message": "Server test from GET /api/test-emailjs.",
     }
     ok = await _emailjs_send(sample)
     if not ok:
         raise HTTPException(status_code=500, detail="EmailJS send failed (check logs)")
     return {"ok": True}
 
-@api_router.post("/test-emailjs")
-async def test_emailjs_post():
-    sample = {
-        "name": "Test User (POST)",
-        "company": "AIzamo",
-        "service": "Testing",
-        "email": "test@aizamo.com",
-        "phone": "+1 (403) 800-3135",
-        "time": _now_local_str(),
-        "message": "Server test from POST /api/test-emailjs."
-    }
-    ok = await _emailjs_send(sample)
+# SMTP test
+@api_router.get("/test-smtp")
+async def test_smtp():
+    ok = await _smtp_send("SMTP Test", f"SMTP test at {_now_local_str()}")
     if not ok:
-        raise HTTPException(status_code=500, detail="EmailJS send failed (check logs)")
+        raise HTTPException(status_code=500, detail="SMTP send failed (check logs)")
     return {"ok": True}
+
+# GHL test
+@api_router.get("/test-ghl")
+async def test_ghl():
+    if not (GHL_API_KEY and GHL_LOCATION_ID):
+        raise HTTPException(status_code=500, detail="GHL not configured")
+    sample = {
+        "firstName": "Test",
+        "lastName": "User",
+        "email": "test@aizamo.com",
+        "service": "Testing",
+    }
+    res = await create_ghl_contact(sample)
+    if not res:
+        raise HTTPException(status_code=500, detail="GHL contact creation failed (check logs)")
+    return res
 
 # Simple status memory
 _status_checks: List[StatusCheck] = []
@@ -312,12 +423,13 @@ async def get_status_checks():
 # Mount API
 app.include_router(api_router)
 
-# CORS (configurable)
+# CORS (avoid '*' with credentials)
 _allowed = os.getenv("ALLOWED_ORIGINS", "*")
 origins = ["*"] if _allowed == "*" else [o.strip() for o in _allowed.split(",") if o.strip()]
+allow_creds = False if origins == ["*"] else True
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
+    allow_credentials=allow_creds,
     allow_origins=origins,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -326,10 +438,9 @@ app.add_middleware(
 # Proxy/HTTPS/Hosts
 app.add_middleware(ProxyHeadersMiddleware)        # trust X-Forwarded-* from Heroku router
 app.add_middleware(HTTPSRedirectMiddleware)       # force https
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["aizamo.com", "www.aizamo.com", "*.herokuapp.com"],
-)
+
+trusted_hosts = ["aizamo.com", "www.aizamo.com", "*.herokuapp.com"]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
 
 # Security + scanner blocking + cache headers
 SUSPECT_PREFIXES = ("/.", "/wp-", "/wp/", "/xmlrpc.php", "/telescope")
@@ -370,12 +481,12 @@ async def hardening_middleware(request: Request, call_next):
 async def healthz():
     return {"ok": True}
 
-# Serve CRA build at root
+# Serve SPA at root
 if os.path.exists(BUILD_DIR):
     app.mount("/", StaticFiles(directory=BUILD_DIR, html=True), name="client")
-    logger.info("✅ Mounted CRA build at / (html=True)")
+    logger.info(f"✅ Mounted static site at / (dir={BUILD_DIR})")
 else:
-    logger.warning("⚠️ Build directory not found; API-only mode")
+    logger.warning(f"⚠️ Build directory not found ({BUILD_DIR}); API-only mode")
 
 if __name__ == "__main__":
     import uvicorn
