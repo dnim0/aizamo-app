@@ -34,12 +34,12 @@ from starlette.concurrency import run_in_threadpool
 # ────────────────────────────────────────────────────────────────────────────────
 load_dotenv()
 
-# EmailJS (supports public_ or private_ keys)
+# EmailJS (requires public key; private key optional and recommended server-to-server)
 EMAILJS_SERVICE_ID = os.getenv("EMAILJS_SERVICE_ID", "")
 EMAILJS_TEMPLATE_ID = os.getenv("EMAILJS_TEMPLATE_ID", "")
-EMAILJS_PUBLIC_KEY = os.getenv("EMAILJS_PUBLIC_KEY", "")     # must start with "public_"
-EMAILJS_PRIVATE_KEY = os.getenv("EMAILJS_PRIVATE_KEY", "")   # must start with "private_"
-EMAILJS_ORIGIN = os.getenv("EMAILJS_ORIGIN", "")             # optional; omit for private key
+EMAILJS_PUBLIC_KEY = os.getenv("EMAILJS_PUBLIC_KEY", "")     # EmailJS Public Key (must be a valid value from Dashboard)
+EMAILJS_PRIVATE_KEY = os.getenv("EMAILJS_PRIVATE_KEY", "")   # EmailJS Private Key (optional, server-side)
+EMAILJS_ORIGIN = os.getenv("EMAILJS_ORIGIN", "")             # optional; omit for private key flows
 EMAIL_DEBUG_SYNC = os.getenv("EMAIL_DEBUG_SYNC", "false").lower() in {"1", "true", "yes"}
 
 # SMTP fallback (e.g., Gmail app password)
@@ -67,7 +67,7 @@ BUILD_DIR = os.getenv("BUILD_DIR", "build")
 app = FastAPI(
     title="AIzamo AI Solutions",
     description="Full-Stack Website - AIzamo AI Solutions",
-    version="1.2.0",
+    version="1.3.0",
 )
 api_router = APIRouter(prefix="/api")
 
@@ -153,18 +153,15 @@ async def parse_contact_request(request: Request) -> ContactFormCreate:
 
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Email: EmailJS (public/private) → SMTP fallback
+# Email: EmailJS (public required; private optional) → SMTP fallback
 # ────────────────────────────────────────────────────────────────────────────────
+
 def _emailjs_config_ok() -> bool:
-    if not (EMAILJS_SERVICE_ID and EMAILJS_TEMPLATE_ID):
-        logger.error("EmailJS misconfigured: missing SERVICE_ID or TEMPLATE_ID")
+    # Why: EmailJS API requires user_id (public key) even when accessToken is provided
+    if not (EMAILJS_SERVICE_ID and EMAILJS_TEMPLATE_ID and EMAILJS_PUBLIC_KEY):
+        logger.error("EmailJS needs SERVICE_ID, TEMPLATE_ID, and PUBLIC_KEY")
         return False
-    if EMAILJS_PRIVATE_KEY.startswith("private_"):
-        return True
-    if EMAILJS_PUBLIC_KEY.startswith("public_"):
-        return True
-    logger.error("EmailJS keys misconfigured: need public_ or private_ key")
-    return False
+    return True
 
 
 async def _emailjs_send(template_params: Dict[str, Any]) -> bool:
@@ -174,16 +171,16 @@ async def _emailjs_send(template_params: Dict[str, Any]) -> bool:
     payload: Dict[str, Any] = {
         "service_id": EMAILJS_SERVICE_ID,
         "template_id": EMAILJS_TEMPLATE_ID,
+        "user_id": EMAILJS_PUBLIC_KEY,          # required by EmailJS
         "template_params": template_params,
     }
-    # Why: prefer server-to-server flow when private key is present; avoids origin issues.
-    if EMAILJS_PRIVATE_KEY.startswith("private_"):
+    # Optional server auth (recommended when available)
+    if EMAILJS_PRIVATE_KEY:
         payload["accessToken"] = EMAILJS_PRIVATE_KEY
-    else:
-        payload["user_id"] = EMAILJS_PUBLIC_KEY
 
     headers = {"Content-Type": "application/json"}
-    if EMAILJS_ORIGIN and not EMAILJS_PRIVATE_KEY.startswith("private_"):
+    # Origin header is optional; omit unless you actually need it
+    if EMAILJS_ORIGIN:
         headers["Origin"] = EMAILJS_ORIGIN
 
     try:
@@ -234,13 +231,22 @@ async def _smtp_send(subject: str, body: str) -> bool:
 async def send_email(contact: ContactFormSubmission) -> bool:
     subject = f"New Contact — {contact.firstName} {contact.lastName} ({contact.service})"
     body = (
-        f"Time: {_now_local_str()}\n"
-        f"Name: {contact.firstName} {contact.lastName}\n"
-        f"Email: {contact.email}\n"
-        f"Phone: {contact.phone or ''}\n"
-        f"Company: {contact.company or ''}\n"
-        f"Service: {contact.service}\n\n"
-        f"Message:\n{contact.message}\n"
+        f"Time: {_now_local_str()}
+"
+        f"Name: {contact.firstName} {contact.lastName}
+"
+        f"Email: {contact.email}
+"
+        f"Phone: {contact.phone or ''}
+"
+        f"Company: {contact.company or ''}
+"
+        f"Service: {contact.service}
+
+"
+        f"Message:
+{contact.message}
+"
     )
 
     # Try EmailJS first
@@ -269,6 +275,7 @@ async def send_email(contact: ContactFormSubmission) -> bool:
 # ────────────────────────────────────────────────────────────────────────────────
 # GoHighLevel
 # ────────────────────────────────────────────────────────────────────────────────
+
 def _ghl_headers() -> dict:
     return {
         "Authorization": f"Bearer {GHL_API_KEY}",
@@ -348,7 +355,7 @@ async def submit_contact_form(request: Request, background_tasks: BackgroundTask
     contact_data = await parse_contact_request(request)
     contact_submission = ContactFormSubmission(**contact_data.dict())
 
-    # Why: surface misconfig early during debugging
+    # Ensure at least one email transport is available
     email_available = _emailjs_config_ok() or (
         SMTP_SERVER and SMTP_PORT and SMTP_USERNAME and SMTP_PASSWORD and FROM_EMAIL and TO_EMAIL
     )
@@ -391,11 +398,12 @@ async def submit_contact_form(request: Request, background_tasks: BackgroundTask
 async def test_emailjs_get():
     """Return raw EmailJS status/body to make debugging explicit."""
     if not _emailjs_config_ok():
-        return JSONResponse({"error": "EmailJS not configured (keys)"}, status_code=500)
+        return JSONResponse({"error": "EmailJS not configured (service/template/public key)"}, status_code=500)
 
     payload: Dict[str, Any] = {
         "service_id": EMAILJS_SERVICE_ID,
         "template_id": EMAILJS_TEMPLATE_ID,
+        "user_id": EMAILJS_PUBLIC_KEY,  # required
         "template_params": {
             "name": "Test User",
             "email": "test@aizamo.com",
@@ -403,13 +411,11 @@ async def test_emailjs_get():
             "time": _now_local_str(),
         },
     }
-    if EMAILJS_PRIVATE_KEY.startswith("private_"):
+    if EMAILJS_PRIVATE_KEY:
         payload["accessToken"] = EMAILJS_PRIVATE_KEY
-    else:
-        payload["user_id"] = EMAILJS_PUBLIC_KEY
 
     headers = {"Content-Type": "application/json"}
-    if EMAILJS_ORIGIN and not EMAILJS_PRIVATE_KEY.startswith("private_"):
+    if EMAILJS_ORIGIN:
         headers["Origin"] = EMAILJS_ORIGIN
 
     async with httpx.AsyncClient(timeout=20.0) as client:
@@ -503,7 +509,7 @@ async def hardening_middleware(request: Request, call_next):
 
     resp = await call_next(request)
 
-    # Why: strict transport only when actually on https to avoid local dev warnings.
+    # Strict transport only when actually on https to avoid local dev warnings.
     if request.headers.get("x-forwarded-proto", request.url.scheme) == "https":
         resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
     resp.headers["X-Content-Type-Options"] = "nosniff"
