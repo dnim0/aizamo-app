@@ -1,7 +1,7 @@
 # File: backend/main.py
 
 from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
@@ -23,28 +23,33 @@ from typing import List, Optional, Dict, Any
 
 from pydantic import BaseModel, Field, EmailStr, validator
 import httpx
+from phonenumbers import (
+    PhoneNumberFormat as _PN_FMT,
+    NumberParseException as _PN_EX,
+    parse as _pn_parse,
+    is_valid_number as _pn_is_valid,
+    format_number as _pn_format,
+)
 import smtplib
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from starlette.concurrency import run_in_threadpool
+
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Environment
 # ────────────────────────────────────────────────────────────────────────────────
 load_dotenv()
 
-# Email transport selector
-EMAIL_TRANSPORT = os.getenv("EMAIL_TRANSPORT", "auto").lower()  # smtp | emailjs | auto | off
-EMAIL_DEBUG_SYNC = os.getenv("EMAIL_DEBUG_SYNC", "false").lower() in {"1", "true", "yes"}
-
-# EmailJS
+# EmailJS (requires public key; private key optional and recommended server-to-server)
 EMAILJS_SERVICE_ID = os.getenv("EMAILJS_SERVICE_ID", "")
 EMAILJS_TEMPLATE_ID = os.getenv("EMAILJS_TEMPLATE_ID", "")
-EMAILJS_PUBLIC_KEY = os.getenv("EMAILJS_PUBLIC_KEY", "")      # required by EmailJS
-EMAILJS_PRIVATE_KEY = os.getenv("EMAILJS_PRIVATE_KEY", "")    # optional
-EMAILJS_ORIGIN = os.getenv("EMAILJS_ORIGIN", "")              # optional
+EMAILJS_PUBLIC_KEY = os.getenv("EMAILJS_PUBLIC_KEY", "")     # EmailJS Public Key (must be a valid value from Dashboard)
+EMAILJS_PRIVATE_KEY = os.getenv("EMAILJS_PRIVATE_KEY", "")   # EmailJS Private Key (optional, server-side)
+EMAILJS_ORIGIN = os.getenv("EMAILJS_ORIGIN", "")             # optional; omit for private key flows
+EMAIL_DEBUG_SYNC = os.getenv("EMAIL_DEBUG_SYNC", "false").lower() in {"1", "true", "yes"}
 
-# SMTP
+# SMTP fallback (e.g., Gmail app password)
 SMTP_SERVER = os.getenv("SMTP_SERVER", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "0") or 0)
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
@@ -54,7 +59,11 @@ FROM_EMAIL = os.getenv("FROM_EMAIL", "")
 TO_EMAIL = os.getenv("TO_EMAIL", "")
 
 LOCAL_TZ = os.getenv("LOCAL_TZ", "Europe/Moscow")
-BUILD_DIR = os.getenv("BUILD_DIR", "build")  # static site dir
+# Default region for phone parsing (ISO 3166-1 alpha-2), e.g. "US", "CA", "EE"
+PHONE_DEFAULT_REGION = os.getenv("PHONE_DEFAULT_REGION", "US")
+
+# SPA build dir
+BUILD_DIR = os.getenv("BUILD_DIR", "build")
 
 # ────────────────────────────────────────────────────────────────────────────────
 # App
@@ -62,12 +71,13 @@ BUILD_DIR = os.getenv("BUILD_DIR", "build")  # static site dir
 app = FastAPI(
     title="AIzamo AI Solutions",
     description="Full-Stack Website - AIzamo AI Solutions",
-    version="2.0.0",
+    version="1.4.0",
 )
 api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
+
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Models
@@ -77,8 +87,10 @@ class StatusCheck(BaseModel):
     client_name: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
+
 class StatusCheckCreate(BaseModel):
     client_name: str
+
 
 class ContactFormSubmission(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -86,38 +98,62 @@ class ContactFormSubmission(BaseModel):
     lastName: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
     company: Optional[str] = Field(None, max_length=200)
-    phone: Optional[str] = Field(None, max_length=20)
+    phone: Optional[str] = Field(None, max_length=32)
     service: str = Field(..., min_length=1)
-    message: str = Field(..., min_length=10, max_length=2000)
+    message: str = Field(..., min_length=2, max_length=2000)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     status: str = Field(default="new")
 
     @validator("phone", pre=True)
-    def validate_phone(cls, v):
-        if v and str(v).strip():
-            digits = "".join(filter(str.isdigit, str(v)))
-            if len(digits) < 7:
-                raise ValueError("Phone number is too short")
-        return v
+    def format_phone(cls, v):
+        if not v or not str(v).strip():
+            return None
+        s = str(v).strip()
+        # Prefer international formatting (readability), fallback to original
+        try:
+            pn = _pn_parse(s, None if s.startswith("+") else PHONE_DEFAULT_REGION)
+            if _pn_is_valid(pn):
+                return _pn_format(pn, _PN_FMT.INTERNATIONAL)  # e.g. +1 403-800-3135
+        except _PN_EX:
+            pass
+        # Keep original if not parseable; avoid rejecting leads for minor typos
+        return s
+
 
 class ContactFormCreate(BaseModel):
     firstName: str = Field(..., min_length=1, max_length=100)
     lastName: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
     company: Optional[str] = Field(None, max_length=200)
-    phone: Optional[str] = Field(None, max_length=20)
+    phone: Optional[str] = Field(None, max_length=32)
     service: str = Field(..., min_length=1)
-    message: str = Field(..., min_length=10, max_length=2000)
+    message: str = Field(..., min_length=2, max_length=2000)
+
+    @validator("phone", pre=True)
+    def format_phone(cls, v):
+        if not v or not str(v).strip():
+            return None
+        s = str(v).strip()
+        try:
+            pn = _pn_parse(s, None if s.startswith("+") else PHONE_DEFAULT_REGION)
+            if _pn_is_valid(pn):
+                return _pn_format(pn, _PN_FMT.INTERNATIONAL)
+        except _PN_EX:
+            pass
+        return s
+
 
 class ContactFormResponse(BaseModel):
     success: bool
     message: str
     contact_id: Optional[str] = None
 
+
 # ────────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ────────────────────────────────────────────────────────────────────────────────
 def _now_local_str() -> str:
+    """Prefer TZ from env; ensures readable timestamps in notifications."""
     now_utc = datetime.now(ZoneInfo("UTC"))
     try:
         tz = ZoneInfo(LOCAL_TZ)
@@ -125,42 +161,62 @@ def _now_local_str() -> str:
         tz = ZoneInfo("UTC")
     return now_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S %Z")
 
+
 async def parse_contact_request(request: Request) -> ContactFormCreate:
-    ct = (request.headers.get("content-type") or "").lower()
+    """Accept JSON or multipart FormData; avoids frontend mismatch 4xx."""
+    ct = request.headers.get("content-type", "").lower()
+    if "application/json" in ct:
+        data = await request.json()
+    else:
+        form = await request.form()
+        data = {k: form.get(k) for k in ("firstName", "lastName", "email", "company", "phone", "service", "message")}
     try:
-        if "application/json" in ct:
-            data = await request.json()
-        else:
-            form = await request.form()  # requires python-multipart for multipart/form-data
-            data = {k: form.get(k) for k in ("firstName","lastName","email","company","phone","service","message")}
         return ContactFormCreate(**data)
-    except AssertionError as e:
-        # missing python-multipart → clearer client error
-        raise HTTPException(status_code=415, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Invalid contact payload: {e}")
 
+
+def _phone_to_e164(phone: Optional[str]) -> Optional[str]:
+    """Backend-only strict format for future CRMs; not sent in emails or EmailJS."""
+    if not phone:
+        return None
+    try:
+        pn = _pn_parse(phone, None if str(phone).startswith("+") else PHONE_DEFAULT_REGION)
+        if _pn_is_valid(pn):
+            return _pn_format(pn, _PN_FMT.E164)  # +14038003135
+    except _PN_EX:
+        pass
+    return None
+
+
 # ────────────────────────────────────────────────────────────────────────────────
-# Email Transports
+# Email: EmailJS (public required; private optional) → SMTP fallback
 # ────────────────────────────────────────────────────────────────────────────────
+
 def _emailjs_config_ok() -> bool:
-    return bool(EMAILJS_SERVICE_ID and EMAILJS_TEMPLATE_ID and EMAILJS_PUBLIC_KEY)
+    # Why: EmailJS API requires user_id (public key) even when accessToken is provided
+    if not (EMAILJS_SERVICE_ID and EMAILJS_TEMPLATE_ID and EMAILJS_PUBLIC_KEY):
+        logger.error("EmailJS needs SERVICE_ID, TEMPLATE_ID, and PUBLIC_KEY")
+        return False
+    return True
+
 
 async def _emailjs_send(template_params: Dict[str, Any]) -> bool:
     if not _emailjs_config_ok():
-        logger.error("EmailJS not configured (need SERVICE_ID, TEMPLATE_ID, PUBLIC_KEY).")
         return False
 
     payload: Dict[str, Any] = {
         "service_id": EMAILJS_SERVICE_ID,
         "template_id": EMAILJS_TEMPLATE_ID,
-        "user_id": EMAILJS_PUBLIC_KEY,
+        "user_id": EMAILJS_PUBLIC_KEY,          # required by EmailJS
         "template_params": template_params,
     }
+    # Optional server auth (recommended when available)
     if EMAILJS_PRIVATE_KEY:
         payload["accessToken"] = EMAILJS_PRIVATE_KEY
 
     headers = {"Content-Type": "application/json"}
+    # Origin header is optional; omit unless you actually need it
     if EMAILJS_ORIGIN:
         headers["Origin"] = EMAILJS_ORIGIN
 
@@ -176,13 +232,16 @@ async def _emailjs_send(template_params: Dict[str, Any]) -> bool:
         logger.error(f"EmailJS exception: {e}")
         return False
 
+
 def _smtp_send_sync(subject: str, body: str) -> bool:
+    """Blocking SMTP send; run via threadpool. Keep minimal surface to avoid TLS surprises."""
     if not (SMTP_SERVER and SMTP_PORT and SMTP_USERNAME and SMTP_PASSWORD and FROM_EMAIL and TO_EMAIL):
         return False
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
     msg["From"] = formataddr(("AIzamo", FROM_EMAIL))
     msg["To"] = TO_EMAIL
+
     try:
         if SMTP_SECURITY == "ssl":
             with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=20) as s:
@@ -201,12 +260,20 @@ def _smtp_send_sync(subject: str, body: str) -> bool:
         logger.error(f"SMTP exception: {e}")
         return False
 
+
 async def _smtp_send(subject: str, body: str) -> bool:
     return await run_in_threadpool(_smtp_send_sync, subject, body)
 
+
 async def send_email(contact: ContactFormSubmission) -> bool:
-    """Send via EmailJS; if it fails, fall back to SMTP."""
+    """Send contact via EmailJS first; if that fails, fall back to SMTP."""
     subject = f"New Contact — {contact.firstName} {contact.lastName} ({contact.service})"
+
+    # Backend-only strict phone (not sent via email); handy for future CRMs
+    e164 = _phone_to_e164(contact.phone)
+    if e164:
+        logger.info(f"Contact phone E.164 (backend-only): {e164}")
+
     lines = [
         f"Time: {_now_local_str()}",
         f"Name: {contact.firstName} {contact.lastName}",
@@ -218,41 +285,39 @@ async def send_email(contact: ContactFormSubmission) -> bool:
         "Message:",
         contact.message,
     ]
-    body = "\n".join(lines)
+    body = "\n".join(lines)  # <-- the correct, single-line newline literal
 
-    # Transport selection
-    t = EMAIL_TRANSPORT
-    if t == "off":
-        logger.error("Email transport disabled (EMAIL_TRANSPORT=off)")
-        return False
+    # Try EmailJS first
+    try:
+        ok = await _emailjs_send(
+            {
+                "name": f"{contact.firstName} {contact.lastName}".strip(),
+                "company": contact.company or "",
+                "service": contact.service,
+                "email": contact.email,
+                "phone": contact.phone or "",
+                "time": _now_local_str(),
+                "message": contact.message,
+            }
+        )
+    except Exception as e:
+        logger.error(f"EmailJS exception: {e}")
+        ok = False
 
-    if t == "emailjs":
-        return await _emailjs_send({
-            "name": f"{contact.firstName} {contact.lastName}".strip(),
-            "company": contact.company or "",
-            "service": contact.service,
-            "email": contact.email,
-            "phone": contact.phone or "",
-            "time": _now_local_str(),
-            "message": contact.message,
-        })
-
-    if t == "smtp":
-        return await _smtp_send(subject, body)
-
-    # auto: try EmailJS then SMTP
-    ok = await _emailjs_send({
-        "name": f"{contact.firstName} {contact.lastName}".strip(),
-        "company": contact.company or "",
-        "service": contact.service,
-        "email": contact.email,
-        "phone": contact.phone or "",
-        "time": _now_local_str(),
-        "message": contact.message,
-    })
     if ok:
         return True
-    return await _smtp_send(subject, body)
+
+    # Fallback to SMTP
+    try:
+        if await _smtp_send(subject, body):
+            return True
+    except Exception as e:
+        logger.error(f"SMTP exception: {e}")
+
+    logger.error("All email transports failed (EmailJS + SMTP)")
+    return False
+
+
 
 # ────────────────────────────────────────────────────────────────────────────────
 # API Routes
@@ -260,6 +325,7 @@ async def send_email(contact: ContactFormSubmission) -> bool:
 @api_router.get("/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+
 
 @api_router.get("/version")
 async def version():
@@ -269,82 +335,75 @@ async def version():
         "time": datetime.utcnow().isoformat() + "Z",
     }
 
+
 @api_router.post("/contact", response_model=ContactFormResponse)
 async def submit_contact_form(request: Request, background_tasks: BackgroundTasks):
-    try:
-        contact_data = await parse_contact_request(request)
-        contact_submission = ContactFormSubmission(**contact_data.dict())
-    except Exception as e:
-        logger.exception("Contact parse/validation error")
-        raise HTTPException(status_code=400, detail=f"Bad payload: {e}")
+    contact_data = await parse_contact_request(request)
+    contact_submission = ContactFormSubmission(**contact_data.dict())
 
-    email_available = (
-        (EMAIL_TRANSPORT in {"emailjs","auto"} and _emailjs_config_ok())
-        or (EMAIL_TRANSPORT in {"smtp","auto"} and SMTP_SERVER and SMTP_PORT and SMTP_USERNAME and SMTP_PASSWORD and FROM_EMAIL and TO_EMAIL)
+    # Ensure at least one email transport is available
+    email_available = _emailjs_config_ok() or (
+        SMTP_SERVER and SMTP_PORT and SMTP_USERNAME and SMTP_PASSWORD and FROM_EMAIL and TO_EMAIL
     )
     if not email_available:
-        logger.error("No email transport configured")
+        logger.error("No email transport configured (EmailJS misconfigured and SMTP missing)")
         raise HTTPException(status_code=500, detail="Email service unavailable")
 
-    try:
-        if EMAIL_DEBUG_SYNC:
-            ok = await send_email(contact_submission)
-            if not ok:
-                raise RuntimeError("Email send failed")
-        else:
-            background_tasks.add_task(send_email, contact_submission)
-    except Exception as e:
-        logger.exception("Contact handler error")
-        raise HTTPException(status_code=500, detail=f"Server error: {e}")
+    if EMAIL_DEBUG_SYNC:
+        ok = await send_email(contact_submission)
+        if not ok:
+            raise HTTPException(status_code=500, detail="Email send failed (see logs)")
+    else:
+        background_tasks.add_task(send_email, contact_submission)
 
     logger.info(f"Contact form submitted: {contact_submission.email}")
-    return ContactFormResponse(success=True, message="Thanks! We'll get back to you soon.", contact_id=contact_submission.id)
+    return ContactFormResponse(
+        success=True,
+        message="Thank you for your message! We'll get back to you soon.",
+        contact_id=contact_submission.id,
+    )
 
-# EmailJS diagnostics
+
 @api_router.get("/test-emailjs")
 async def test_emailjs_get():
-    sample = {
-        "name": "Test User (GET)",
-        "company": "AIzamo",
-        "service": "Testing",
-        "email": "test@aizamo.com",
-        "phone": "+1 (403) 800-3135",
-        "time": _now_local_str(),
-        "message": "Server test from GET /api/test-emailjs."
-    }
-    ok = await _emailjs_send(sample)
-    if not ok:
-        raise HTTPException(status_code=500, detail="EmailJS send failed (check logs)")
-    return {"status": 200, "body": "OK"}
+    """Return raw EmailJS status/body to make debugging explicit."""
+    if not _emailjs_config_ok():
+        return JSONResponse({"error": "EmailJS not configured (service/template/public key)"}, status_code=500)
 
-@api_router.post("/test-emailjs")
-async def test_emailjs_post():
-    sample = {
-        "name": "Test User (POST)",
-        "company": "AIzamo",
-        "service": "Testing",
-        "email": "test@aizamo.com",
-        "phone": "+1 (403) 800-3135",
-        "time": _now_local_str(),
-        "message": "Server test from POST /api/test-emailjs."
+    payload: Dict[str, Any] = {
+        "service_id": EMAILJS_SERVICE_ID,
+        "template_id": EMAILJS_TEMPLATE_ID,
+        "user_id": EMAILJS_PUBLIC_KEY,  # required
+        "template_params": {
+            "name": "Test User",
+            "email": "test@aizamo.com",
+            "message": "Server test /api/test-emailjs",
+            "time": _now_local_str(),
+        },
     }
-    ok = await _emailjs_send(sample)
-    if not ok:
-        raise HTTPException(status_code=500, detail="EmailJS send failed (check logs)")
-    return {"status": 200, "body": "OK"}
+    if EMAILJS_PRIVATE_KEY:
+        payload["accessToken"] = EMAILJS_PRIVATE_KEY
 
-# SMTP diagnostics
+    headers = {"Content-Type": "application/json"}
+    if EMAILJS_ORIGIN:
+        headers["Origin"] = EMAILJS_ORIGIN
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        r = await client.post("https://api.emailjs.com/api/v1.0/email/send", json=payload, headers=headers)
+    return JSONResponse({"status": r.status_code, "body": r.text}, status_code=r.status_code)
+
+
 @api_router.get("/test-smtp")
 async def test_smtp():
-    subject = "SMTP Test — AIzamo"
-    body = f"Time: {_now_local_str()}\nThis is a test email from /api/test-smtp."
-    ok = await _smtp_send(subject, body)
+    ok = await _smtp_send("SMTP Test", f"SMTP test at {_now_local_str()}")
     if not ok:
         raise HTTPException(status_code=500, detail="SMTP send failed (check logs)")
-    return {"status": 200, "body": "OK"}
+    return {"ok": True}
+
 
 # Simple status memory
 _status_checks: List[StatusCheck] = []
+
 
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
@@ -352,44 +411,55 @@ async def create_status_check(input: StatusCheckCreate):
     _status_checks.append(obj)
     return obj
 
+
 @api_router.get("/status", response_model=List[StatusCheck])
 async def get_status_checks():
     return _status_checks
 
+
 # Mount API
 app.include_router(api_router)
 
-# CORS
+
+# ────────────────────────────────────────────────────────────────────────────────
+# CORS / Middleware / Security
+# ────────────────────────────────────────────────────────────────────────────────
 _allowed = os.getenv("ALLOWED_ORIGINS", "*")
 origins = ["*"] if _allowed == "*" else [o.strip() for o in _allowed.split(",") if o.strip()]
+allow_creds = False if origins == ["*"] else True
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
+    allow_credentials=allow_creds,
     allow_origins=origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Proxy/HTTPS/Hosts
-app.add_middleware(ProxyHeadersMiddleware)        # trust X-Forwarded-* from Heroku router
-app.add_middleware(HTTPSRedirectMiddleware)       # force https
+app.add_middleware(ProxyHeadersMiddleware)  # trust x-forwarded-* on Heroku
+app.add_middleware(HTTPSRedirectMiddleware)  # enforce https
+
 app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["aizamo.com", "www.aizamo.com", "*.herokuapp.com"],
+    TrustedHostMiddleware, allowed_hosts=["aizamo.com", "www.aizamo.com", "*.herokuapp.com"]
 )
 
-# Security + scanner blocking + cache headers
+# Basic scanner blocking + cache headers
 SUSPECT_PREFIXES = ("/.", "/wp-", "/wp/", "/xmlrpc.php", "/telescope")
 SUSPECT_EXACT = {"/.git", "/.git/config", "/.env", "/info.php", "/phpinfo.php"}
 SUSPECT_EXTS = (".php", ".phps", ".bak", ".env", ".git", ".sql")
 
+
 def _is_suspicious_path(request: Request) -> bool:
     p = request.url.path.lower()
-    if any(p.startswith(pref) for pref in SUSPECT_PREFIXES): return True
-    if p in SUSPECT_EXACT: return True
-    if any(p.endswith(ext) for ext in SUSPECT_EXTS): return True
-    if "rest_route=" in request.url.query.lower(): return True
+    if any(p.startswith(pref) for pref in SUSPECT_PREFIXES):
+        return True
+    if p in SUSPECT_EXACT:
+        return True
+    if any(p.endswith(ext) for ext in SUSPECT_EXTS):
+        return True
+    if "rest_route=" in request.url.query.lower():
+        return True
     return False
+
 
 @app.middleware("http")
 async def hardening_middleware(request: Request, call_next):
@@ -398,31 +468,40 @@ async def hardening_middleware(request: Request, call_next):
 
     resp = await call_next(request)
 
+    # Strict transport only when actually on https to avoid local dev warnings.
     if request.headers.get("x-forwarded-proto", request.url.scheme) == "https":
         resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
 
+    # Aggressive cache for static assets
     p = request.url.path
-    if p.startswith("/static/") or p.startswith("/favicon") or p.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".svg", ".ico", ".webmanifest")):
+    if p.startswith("/static/") or p.startswith("/favicon") or p.endswith(
+        (".css", ".js", ".png", ".jpg", ".jpeg", ".svg", ".ico", ".webmanifest")
+    ):
         resp.headers.setdefault("Cache-Control", "public, max-age=31536000, immutable")
 
     return resp
 
-# Lightweight health for infra
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Health + Static
+# ────────────────────────────────────────────────────────────────────────────────
 @app.get("/healthz")
 async def healthz():
     return {"ok": True}
 
-# Serve static site at root
+
 if os.path.exists(BUILD_DIR):
     app.mount("/", StaticFiles(directory=BUILD_DIR, html=True), name="client")
     logger.info(f"✅ Mounted static site at / (dir={BUILD_DIR})")
 else:
-    logger.warning("⚠️ Static directory not found; API-only mode")
+    logger.warning(f"⚠️ Build directory not found ({BUILD_DIR}); API-only mode")
+
 
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
