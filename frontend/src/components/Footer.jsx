@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, ArrowUp } from 'lucide-react';
 import Modal from './Modal';
+import { Link } from 'react-router-dom'; // ✅ added
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -84,15 +85,15 @@ const Footer = () => {
 
   return (
     <footer 
-  className="relative" 
-  style={{ backgroundColor: 'var(--darkest-brown)' }}
->
-  <div className="pt-12"> {/* <== Add this padding wrapper */}
-    {/* Main Footer Content */}
-    <div className="container py-16">
-      ...
-    </div>
-  </div>
+      className="relative" 
+      style={{ backgroundColor: 'var(--darkest-brown)' }}
+    >
+      <div className="pt-12">
+        <div className="container py-16">
+          {/* ... your existing content ... */}
+        </div>
+      </div>
+
       {/* Main Footer Content */}
       <div className="container py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -107,25 +108,15 @@ const Footer = () => {
             <div className="space-y-3">
               <div className="flex items-center">
                 <Mail size={18} className="mr-3" style={{ color: 'var(--medium-brown)' }} />
-                <a
-                  href="mailto:automate@aizamo.com"
-                  style={{ color: 'var(--light-brown)' }}
-                  className="hover:underline"
-                  >
+                <a href="mailto:automate@aizamo.com" style={{ color: 'var(--light-brown)' }} className="hover:underline">
                   automate@aizamo.com
-                  </a>
-
+                </a>
               </div>
               <div className="flex items-center">
                 <Phone size={18} className="mr-3" style={{ color: 'var(--medium-brown)' }} />
-                <a
-                  href="tel:+14038003135"
-                  style={{ color: 'var(--light-brown)' }}
-                  className="hover:underline"
-                  >
+                <a href="tel:+14038003135" style={{ color: 'var(--light-brown)' }} className="hover:underline">
                   +1 (403) 800-3135
-                  </a>
-
+                </a>
               </div>
               <div className="flex items-center">
                 <MapPin size={18} className="mr-3" style={{ color: 'var(--medium-brown)' }} />
@@ -142,7 +133,22 @@ const Footer = () => {
               <li><button type="button" onClick={() => scrollToSection('about')} className="hover:opacity-80 transition-opacity text-left" style={{ color: 'var(--light-brown)' }}>About Us</button></li>
               <li><button type="button" onClick={() => scrollToSection('testimonials')} className="hover:opacity-80 transition-opacity text-left" style={{ color: 'var(--light-brown)' }}>Client Reviews</button></li>
               <li><button type="button" onClick={() => scrollToSection('roadmap')} className="hover:opacity-80 transition-opacity text-left" style={{ color: 'var(--light-brown)' }}>Our Process</button></li>
-              <li><button type="button" onClick={() => scrollToSection('contact')} className="hover:opacity-80 transition-opacity text-left" style={{ color: 'var(--light-brown)' }}>Contact Us</button></li>
+              {/* ✅ Updated: Route to /get-started instead of scrolling */}
+              <li>
+                <Link
+                  to="/get-started"
+                  className="hover:opacity-80 transition-opacity"
+                  style={{ color: 'var(--light-brown)' }}
+                  onClick={() => {
+                    try {
+                      window.gtag?.('event', 'footer_contact_link_click', { from: 'footer_quick_links' });
+                      window.plausible?.('footer_contact_link_click', { props: { from: 'footer_quick_links' } });
+                    } catch {}
+                  }}
+                >
+                  Get Started
+                </Link>
+              </li>
             </ul>
           </div>
 
