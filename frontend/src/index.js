@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App";
 
-/* WHY: prevent stale UI — nuke any old Service Worker + caches once, then reload with cache-buster. */
+/* Prevent stale UI: unregister Service Workers, clear caches, reload once with cache-buster. */
 async function cleanupStaleShell() {
   try {
     if ("serviceWorker" in navigator) {
